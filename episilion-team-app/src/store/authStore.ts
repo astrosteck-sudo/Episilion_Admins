@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { STORAGE_KEYS } from '../constants';
 
 export type UserRole = 'super_admin' | 'sub_admin';
 
@@ -24,20 +25,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   setAuth: (user, role, token) => {
     set({ user, role, token });
-    SecureStore.setItemAsync('authToken', token);
-    SecureStore.setItemAsync('userRole', role);
-    SecureStore.setItemAsync('userData', JSON.stringify(user));
+    SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, token);
+    SecureStore.setItemAsync(STORAGE_KEYS.USER_ROLE, role);
+    SecureStore.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
   },
   clearAuth: () => {
     set({ user: null, role: null, token: null });
-    SecureStore.deleteItemAsync('authToken');
-    SecureStore.deleteItemAsync('userRole');
-    SecureStore.deleteItemAsync('userData');
+    SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+    SecureStore.deleteItemAsync(STORAGE_KEYS.USER_ROLE);
+    SecureStore.deleteItemAsync(STORAGE_KEYS.USER_DATA);
   },
   loadAuth: async () => {
-    const token = await SecureStore.getItemAsync('authToken');
-    const role = await SecureStore.getItemAsync('userRole') as UserRole | null;
-    const userData = await SecureStore.getItemAsync('userData');
+    const token = await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+    const role = await SecureStore.getItemAsync(STORAGE_KEYS.USER_ROLE) as UserRole | null;
+    const userData = await SecureStore.getItemAsync(STORAGE_KEYS.USER_DATA);
     
     if (token && role && userData) {
       set({
