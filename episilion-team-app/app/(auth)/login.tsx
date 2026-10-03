@@ -15,7 +15,7 @@ import { Checkbox } from '../../src/components/Checkbox';
 
 export default function LoginScreen() {
   const colors = useThemeStore((state) => state.colors);
-  const [userType, setUserType] = useState<'field_scout' | 'ops_lead'>('field_scout');
+  const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
   const [email, setEmail] = useState('k.mensah@episilion.com.gh');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +32,7 @@ export default function LoginScreen() {
             </View>
           </View>
           <View style={[styles.badge, { backgroundColor: colors.success }]}>
-            <Text style={styles.badgeText}>ACCRA FIELD OPERATIONS</Text>
+            <Text style={styles.badgeText}>UPSA FIELD OPERATIONS</Text>
           </View>
         </View>
 
@@ -49,33 +49,33 @@ export default function LoginScreen() {
           <TouchableOpacity
             style={[
               styles.toggleButton,
-              userType === 'field_scout' && { backgroundColor: colors.success },
+              userType === 'Sub Admin' && { backgroundColor: colors.success },
             ]}
-            onPress={() => setUserType('field_scout')}
+            onPress={() => setUserType('Sub Admin')}
           >
             <Text
               style={[
                 styles.toggleText,
-                { color: userType === 'field_scout' ? '#FFFFFF' : colors.textSecondary },
+                { color: userType === 'Sub Admin' ? '#FFFFFF' : colors.textSecondary },
               ]}
             >
-              Field Scout
+              Sub Admin
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.toggleButton,
-              userType === 'ops_lead' && { backgroundColor: colors.success },
+              userType === 'Super Admin' && { backgroundColor: colors.success },
             ]}
-            onPress={() => setUserType('ops_lead')}
+            onPress={() => setUserType('Super Admin')}
           >
             <Text
               style={[
                 styles.toggleText,
-                { color: userType === 'ops_lead' ? '#FFFFFF' : colors.textSecondary },
+                { color: userType === 'Super Admin' ? '#FFFFFF' : colors.textSecondary },
               ]}
             >
-              Ops Lead
+              Super Admin
             </Text>
           </TouchableOpacity>
         </View>
@@ -83,7 +83,7 @@ export default function LoginScreen() {
         {/* Form Fields */}
         <View style={styles.formSection}>
           <Input
-            label="Staff Email"
+            label="Email Address"
             placeholder="Enter your email"
             value={email}
             onChangeText={setEmail}
@@ -92,14 +92,14 @@ export default function LoginScreen() {
 
           <View style={styles.passwordContainer}>
             <Input
-              label="Security Key / Password"
+              label="Password"
               placeholder="Enter your password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity style={styles.forgotContainer}>
-              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Key?</Text>
+              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Password?</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.eyeIcon}
@@ -110,32 +110,19 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-
-          <Checkbox
-            label="Remember device"
-            checked={rememberDevice}
-            onChange={setRememberDevice}
-            status="GPS Node Online"
-          />
         </View>
 
         {/* Buttons */}
         <View style={styles.buttonSection}>
           <Button
-            title="Sign In with Verification"
+            title="Sign In"
             onPress={() => {}}
             icon={<Text style={styles.arrowIcon}>→</Text>}
-          />
-          <Button
-            title="Quick Biometric Scout Login"
-            onPress={() => {}}
-            variant="secondary"
-            icon={<Text style={styles.fingerprintIcon}>👆</Text>}
           />
         </View>
 
         {/* Provisioned Device Access */}
-        <View style={[styles.infoSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* <View style={[styles.infoSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.infoHeader}>
             <Text style={styles.infoIcon}>ℹ️</Text>
             <Text style={[styles.infoTitle, { color: colors.text }]}>
@@ -151,7 +138,7 @@ export default function LoginScreen() {
           <Text style={[styles.infoSubtext, { color: colors.textSecondary }]}>
             for credential resets or IMEI authorization
           </Text>
-        </View>
+        </View> */}
 
         {/* Credential Presets */}
         <View style={styles.presetsSection}>
@@ -176,7 +163,7 @@ export default function LoginScreen() {
         <View style={styles.locationSection}>
           <Text style={styles.locationIcon}>📍</Text>
           <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-            East Legon / KNUST Operational Cluster
+            Madina / UPSA Operational Cluster
           </Text>
         </View>
       </ScrollView>
