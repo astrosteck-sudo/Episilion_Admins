@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { View, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider } from '../src/providers/ThemeProvider';
 import { useAuthStore } from '../src/store/authStore';
 import { useThemeStore } from '../src/store/themeStore';
@@ -28,10 +27,10 @@ function RootLayoutNav() {
 
   return (
     <>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      {Platform.OS === 'android' && (
-        <View style={{ height: RNStatusBar.currentHeight || 24, backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }} />
-      )}
+      <RNStatusBar
+        barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={colorScheme === 'dark' ? '#000000' : '#FFFFFF'}
+      />
       <Stack
         screenOptions={{
           headerStyle: {
