@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { View, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -28,6 +29,9 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      {Platform.OS === 'android' && (
+        <View style={{ height: RNStatusBar.currentHeight || 24, backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }} />
+      )}
       <Stack
         screenOptions={{
           headerStyle: {
