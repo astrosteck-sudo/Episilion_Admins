@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ThemeProvider } from '../src/providers/ThemeProvider';
 import { useAuthStore } from '../src/store/authStore';
 import { useThemeStore } from '../src/store/themeStore';
 
 function RootLayoutNav() {
+  const router = useRouter();
   const { user, role, loadAuth } = useAuthStore();
   const { colorScheme } = useThemeStore();
 
@@ -14,9 +16,13 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (!user) {
-      return;
+      router.replace('/(auth)/login');
+    } else if (role === 'super_admin') {
+      router.replace('/(super-admin)');
+    } else if (role === 'sub_admin') {
+      router.replace('/(sub-admin)');
     }
-  }, [user, role]);
+  }, [user, role, router]);
 
   return (
     <Stack

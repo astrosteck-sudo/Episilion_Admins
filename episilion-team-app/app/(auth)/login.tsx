@@ -1,9 +1,357 @@
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  SafeAreaView,
+} from 'react-native';
+import { useThemeStore } from '../../src/store/themeStore';
+import { Input } from '../../src/components/Input';
+import { Button } from '../../src/components/Button';
+import { Checkbox } from '../../src/components/Checkbox';
 
 export default function LoginScreen() {
+  const colors = useThemeStore((state) => state.colors);
+  const [userType, setUserType] = useState<'field_scout' | 'ops_lead'>('field_scout');
+  const [email, setEmail] = useState('k.mensah@episilion.com.gh');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(true);
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Login Screen (Placeholder)</Text>
-    </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Logo Section */}
+        <View style={styles.logoSection}>
+          <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
+            <View style={[styles.logoIcon, { backgroundColor: colors.success }]}>
+              <Text style={styles.logoText}>🏠</Text>
+            </View>
+          </View>
+          <View style={[styles.badge, { backgroundColor: colors.success }]}>
+            <Text style={styles.badgeText}>ACCRA FIELD OPERATIONS</Text>
+          </View>
+        </View>
+
+        {/* Title Section */}
+        <View style={styles.titleSection}>
+          <Text style={[styles.title, { color: colors.text }]}>Sign In to Team Portal</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Field Operations & Hostel Management
+          </Text>
+        </View>
+
+        {/* User Type Toggle */}
+        <View style={[styles.toggleContainer, { backgroundColor: colors.inputBackground }]}>
+          <TouchableOpacity
+            style={[
+              styles.toggleButton,
+              userType === 'field_scout' && { backgroundColor: colors.success },
+            ]}
+            onPress={() => setUserType('field_scout')}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                { color: userType === 'field_scout' ? '#FFFFFF' : colors.textSecondary },
+              ]}
+            >
+              Field Scout
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.toggleButton,
+              userType === 'ops_lead' && { backgroundColor: colors.success },
+            ]}
+            onPress={() => setUserType('ops_lead')}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                { color: userType === 'ops_lead' ? '#FFFFFF' : colors.textSecondary },
+              ]}
+            >
+              Ops Lead
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Form Fields */}
+        <View style={styles.formSection}>
+          <Input
+            label="Staff Email"
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+          />
+
+          <View style={styles.passwordContainer}>
+            <Input
+              label="Security Key / Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity style={styles.forgotContainer}>
+              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Key?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Text style={[styles.eyeText, { color: colors.textSecondary }]}>
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Checkbox
+            label="Remember device"
+            checked={rememberDevice}
+            onChange={setRememberDevice}
+            status="GPS Node Online"
+          />
+        </View>
+
+        {/* Buttons */}
+        <View style={styles.buttonSection}>
+          <Button
+            title="Sign In with Verification"
+            onPress={() => {}}
+            icon={<Text style={styles.arrowIcon}>→</Text>}
+          />
+          <Button
+            title="Quick Biometric Scout Login"
+            onPress={() => {}}
+            variant="secondary"
+            icon={<Text style={styles.fingerprintIcon}>👆</Text>}
+          />
+        </View>
+
+        {/* Provisioned Device Access */}
+        <View style={[styles.infoSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.infoHeader}>
+            <Text style={styles.infoIcon}>ℹ️</Text>
+            <Text style={[styles.infoTitle, { color: colors.text }]}>
+              Provisioned Device Access
+            </Text>
+          </View>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+            Officer accounts are managed directly by Super Admin
+          </Text>
+          <Text style={[styles.infoEmail, { color: colors.primary }]}>
+            admin@episilion.com.gh
+          </Text>
+          <Text style={[styles.infoSubtext, { color: colors.textSecondary }]}>
+            for credential resets or IMEI authorization
+          </Text>
+        </View>
+
+        {/* Credential Presets */}
+        <View style={styles.presetsSection}>
+          <Text style={[styles.presetsTitle, { color: colors.textSecondary }]}>
+            FAST FIELD CREDENTIAL PRESETS
+          </Text>
+          <View style={styles.presetItem}>
+            <View style={[styles.presetDot, { backgroundColor: colors.success }]} />
+            <Text style={[styles.presetText, { color: colors.text }]}>
+              Sub-Admin (Field Collector)
+            </Text>
+          </View>
+          <View style={styles.presetItem}>
+            <View style={[styles.presetDot, { backgroundColor: colors.accent }]} />
+            <Text style={[styles.presetText, { color: colors.text }]}>
+              Super Admin (Operations Lead)
+            </Text>
+          </View>
+        </View>
+
+        {/* Location */}
+        <View style={styles.locationSection}>
+          <Text style={styles.locationIcon}>📍</Text>
+          <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+            East Legon / KNUST Operational Cluster
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  logoIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoText: {
+    fontSize: 28,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  titleSection: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 24,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  formSection: {
+    marginBottom: 24,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  forgotContainer: {
+    position: 'absolute',
+    right: 40,
+    top: 0,
+  },
+  forgotText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 30,
+  },
+  eyeText: {
+    fontSize: 18,
+  },
+  buttonSection: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  arrowIcon: {
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  fingerprintIcon: {
+    fontSize: 18,
+  },
+  infoSection: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  infoText: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  infoEmail: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  infoSubtext: {
+    fontSize: 12,
+  },
+  presetsSection: {
+    marginBottom: 24,
+  },
+  presetsTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  presetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  presetDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  presetText: {
+    fontSize: 13,
+  },
+  locationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+  },
+  locationIcon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  locationText: {
+    fontSize: 12,
+  },
+});

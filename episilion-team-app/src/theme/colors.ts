@@ -13,8 +13,7 @@ export const Colors = {
     
     text: '#000000',
     textSecondary: '#8E8E93',
-    textTertiary: '#C7C7CC',
-    
+    textTertiary: '#C7C7CC',    
     border: '#C6C6C8',
     divider: '#E5E5EA',
     
