@@ -18,7 +18,7 @@ export default function LoginScreen() {
   const colorScheme = useThemeStore((state) => state.colorScheme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
-  const [email, setEmail] = useState('k.mensah@episilion.com.gh');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
