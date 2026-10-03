@@ -7,6 +7,9 @@
     "icon": "./assets/icon.png",
 
     "scheme": "episilion-team-app",
+    "experiments": {
+      "typedRoutes": true
+    },
     "ios": {
       "supportsTablet": true
     },
