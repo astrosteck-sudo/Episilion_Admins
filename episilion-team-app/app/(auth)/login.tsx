@@ -15,6 +15,8 @@ import { Checkbox } from '../../src/components/Checkbox';
 
 export default function LoginScreen() {
   const colors = useThemeStore((state) => state.colors);
+  const colorScheme = useThemeStore((state) => state.colorScheme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
   const [email, setEmail] = useState('k.mensah@episilion.com.gh');
   const [password, setPassword] = useState('');
@@ -38,7 +40,12 @@ export default function LoginScreen() {
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={[styles.title, { color: colors.text }]}>Sign In to Team Portal</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: colors.text }]}>Sign In to Team Portal</Text>
+            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+              <Text style={styles.themeIcon}>{colorScheme === 'dark' ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Field Operations & Hostel Management
           </Text>
@@ -160,7 +167,7 @@ export default function LoginScreen() {
         </View>
 
         {/* Location */}
-        <View style={styles.locationSection}>
+        <View style={[styles.locationSection, { borderTopColor: colors.divider }]}>
           <Text style={styles.locationIcon}>📍</Text>
           <Text style={[styles.locationText, { color: colors.textSecondary }]}>
             Madina / UPSA Operational Cluster
@@ -214,10 +221,21 @@ const styles = StyleSheet.create({
   titleSection: {
     marginBottom: 24,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: {
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 4,
+  },
+  themeToggle: {
+    padding: 8,
+  },
+  themeIcon: {
+    fontSize: 24,
   },
   subtitle: {
     fontSize: 14,

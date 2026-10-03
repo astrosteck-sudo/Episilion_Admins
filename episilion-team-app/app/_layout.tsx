@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider } from '../src/providers/ThemeProvider';
 import { useAuthStore } from '../src/store/authStore';
 import { useThemeStore } from '../src/store/themeStore';
@@ -25,18 +26,21 @@ function RootLayoutNav() {
   }, [user, role, router]);
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
-        },
-        headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-      }}
-    >
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(sub-admin)" options={{ headerShown: false }} />
-      <Stack.Screen name="(super-admin)" options={{ headerShown: false }} />
-    </Stack>
+    <>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
+          },
+          headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
+        }}
+      >
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(sub-admin)" options={{ headerShown: false }} />
+        <Stack.Screen name="(super-admin)" options={{ headerShown: false }} />
+      </Stack>
+    </>
   );
 }
 

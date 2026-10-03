@@ -52,15 +52,13 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
         colors: Colors[savedScheme] 
       });
     } else {
-      // If no saved preference, will be set by system listener
+      // If no saved preference, use system scheme or default to light
       const systemScheme = get().systemColorScheme;
-      if (systemScheme) {
-        const initialScheme: ColorScheme = systemScheme === 'dark' ? 'dark' : 'light';
-        set({ 
-          colorScheme: initialScheme, 
-          colors: Colors[initialScheme] 
-        });
-      }
+      const initialScheme: ColorScheme = systemScheme === 'dark' ? 'dark' : 'light';
+      set({ 
+        colorScheme: initialScheme, 
+        colors: Colors[initialScheme] 
+      });
     }
   },
   
