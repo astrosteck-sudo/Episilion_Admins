@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../src/store/themeStore';
@@ -29,9 +30,11 @@ export default function LoginScreen() {
         {/* Logo Section */}
         <View style={styles.logoSection}>
           <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
-            <View style={[styles.logoIcon, { backgroundColor: colors.success }]}>
-              <Text style={styles.logoText}>🏠</Text>
-            </View>
+            <Image
+              source={require('../../assets/episilion_logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <View style={[styles.badge, { backgroundColor: colors.success }]}>
             <Text style={styles.badgeText}>UPSA FIELD OPERATIONS</Text>
@@ -198,15 +201,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  logoIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoText: {
-    fontSize: 28,
+  logoImage: {
+    width: 60,
+    height: 60,
   },
   badge: {
     paddingHorizontal: 12,
