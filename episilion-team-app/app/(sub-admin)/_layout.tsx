@@ -1,24 +1,37 @@
-import { Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useThemeStore } from '../../src/store/themeStore';
 
 export default function SubAdminLayout() {
   const { colorScheme } = useThemeStore();
 
   return (
-    <Tabs
+    <Stack
       screenOptions={{
         headerStyle: {
           backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
         },
         headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-        tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
-        },
-        tabBarActiveTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-        tabBarInactiveTintColor: colorScheme === 'dark' ? '#98989D' : '#8E8E93',
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-    </Tabs>
+      <Stack.Screen 
+        name="index" 
+        options={{ 
+          title: 'Dashboard',
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="add-hostel" 
+        options={{ 
+          title: 'Add Hostel',
+        }} 
+      />
+      <Stack.Screen 
+        name="update-hostel" 
+        options={{ 
+          title: 'Update Hostel',
+        }} 
+      />
+    </Stack>
   );
 }
