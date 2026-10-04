@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,17 +17,21 @@ import { useAuthStore } from '../../src/store/authStore';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { Checkbox } from '../../src/components/Checkbox';
+import { loginRequest } from '../../src/api/auth';
 
 export default function LoginScreen() {
   const colors = useThemeStore((state) => state.colors);
   const colorScheme = useThemeStore((state) => state.colorScheme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  // The WebView will automatically update when latitude/longitude change since we're using them in the source
   const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -128,18 +134,54 @@ export default function LoginScreen() {
         {/* Buttons */}
         <View style={styles.buttonSection}>
           <Button
-            title="Sign In"
-            onPress={() => {
-              // Mock authentication for testing
-              const role = userType === 'Super Admin' ? 'super_admin' : 'sub_admin';
-              setAuth(
-                { id: '1', email: email || 'test@example.com', name: userType },
-                role,
-                'mock-token'
-              );
-              router.replace('/(sub-admin)');
+            title={isLoading ? 'Signing In...' : 'Sign In'}
+            onPress={async () => {
+              if (!email.trim() || !password) {
+                Alert.alert('Validation Error', 'Please enter both email and password');
+                return;
+              }
+
+              setIsLoading(true);
+              try {
+                const response = await loginRequest(email.trim().toLowerCase(), password);
+                
+                // Extract user data from response
+                const { token, user } = response;
+                
+                // Set authentication in store
+                setAuth(
+                  { 
+                    id: user.id.toString(), 
+                    email: user.email, 
+                    name: user.full_name 
+                  },
+                  user.role,
+                  token
+                );
+                
+                // Navigate based on user role
+                if (user.role === 'super_admin') {
+                  router.replace('/(super-admin)');
+                } else {
+                  router.replace('/(sub-admin)');
+                }
+              } catch (error: any) {
+                console.error('Login error:', error);
+                let errorMessage = 'Login failed. Please try again.';
+                
+                if (error.response?.data?.message) {
+                  errorMessage = error.response.data.message;
+                } else if (error.message) {
+                  errorMessage = error.message;
+                }
+                
+                Alert.alert('Login Error', errorMessage);
+              } finally {
+                setIsLoading(false);
+              }
             }}
-            icon={<Text style={styles.arrowIcon}>→</Text>}
+            loading={isLoading}
+            icon={!isLoading && <Text style={styles.arrowIcon}>→</Text>}
           />
         </View>
 

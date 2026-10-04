@@ -7,7 +7,7 @@ export type UserRole = 'super_admin' | 'sub_admin';
 interface User {
   id: string;
   email: string;
-  name: string;
+  name: string; // This maps to full_name from backend
 }
 
 interface AuthState {
