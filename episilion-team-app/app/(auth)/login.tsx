@@ -6,8 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../src/store/themeStore';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
