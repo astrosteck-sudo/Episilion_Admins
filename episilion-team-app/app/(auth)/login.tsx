@@ -9,7 +9,9 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useThemeStore } from '../../src/store/themeStore';
+import { useAuthStore } from '../../src/store/authStore';
 import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { Checkbox } from '../../src/components/Checkbox';
@@ -18,6 +20,7 @@ export default function LoginScreen() {
   const colors = useThemeStore((state) => state.colors);
   const colorScheme = useThemeStore((state) => state.colorScheme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
+  const setAuth = useAuthStore((state) => state.setAuth);
   const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -126,7 +129,16 @@ export default function LoginScreen() {
         <View style={styles.buttonSection}>
           <Button
             title="Sign In"
-            onPress={() => {}}
+            onPress={() => {
+              // Mock authentication for testing
+              const role = userType === 'Super Admin' ? 'super_admin' : 'sub_admin';
+              setAuth(
+                { id: '1', email: email || 'test@example.com', name: userType },
+                role,
+                'mock-token'
+              );
+              router.replace('/(sub-admin)');
+            }}
             icon={<Text style={styles.arrowIcon}>→</Text>}
           />
         </View>
