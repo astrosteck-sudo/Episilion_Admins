@@ -56,10 +56,6 @@ export default function AddHostelScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={[styles.backText, { color: colors.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Add New Hostel</Text>
-        <TouchableOpacity>
-          <Text style={[styles.saveDraft, { color: colors.primary }]}>Save Draft</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -307,21 +303,12 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
   },
   backText: {
     fontSize: 24,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  saveDraft: {
-    fontSize: 14,
     fontWeight: '600',
   },
   scrollContent: {
