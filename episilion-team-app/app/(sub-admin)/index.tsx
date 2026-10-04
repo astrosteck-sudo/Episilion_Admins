@@ -63,7 +63,6 @@ export default function SubAdminHomeScreen() {
                 <Text style={styles.checkIcon}>✓</Text>
                 <Text style={styles.tagText}>REQUIRES SUPER ADMIN REVIEW</Text>
               </View>
-              <Text style={styles.actionText}>NEW ENTRY</Text>
             </View>
           </TouchableOpacity>
 
@@ -87,9 +86,8 @@ export default function SubAdminHomeScreen() {
             <View style={styles.cardFooter}>
               <View style={[styles.tagContainer, { backgroundColor: '#F3E5F5' }]}>
                 <Text style={[styles.lockIcon, { color: '#7B1FA2' }]}>🔒</Text>
-                <Text style={[styles.tagText, { color: '#7B1FA2' }]}>NEEDS 24H SCOUT TOKEN</Text>
+                <Text style={[styles.tagText, { color: '#7B1FA2' }]}>REQUEST ACCESS</Text>
               </View>
-              <Text style={[styles.actionText, { color: '#4CAF50' }]}>REQUEST ACCESS</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -280,11 +278,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4CAF50',
   },
   statsContainer: {
     flexDirection: 'row',
