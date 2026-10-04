@@ -40,7 +40,7 @@ export const Colors = {
     divider: '#38383A',
     
     inputBackground: '#2C2C2E',
-    placeholder: '#98989D',
+    placeholder: '#AEAEB2',
   },
 } as const;
 

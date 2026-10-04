@@ -18,8 +18,8 @@ export default function AddHostelScreen() {
   const colors = useThemeStore((state) => state.colors);
   const [sectionsCompleted, setSectionsCompleted] = useState(0);
   const [hostelName, setHostelName] = useState('');
-  const [latitude, setLatitude] = useState('5.6037');
-  const [longitude, setLongitude] = useState('-0.1870');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [roomTypes, setRoomTypes] = useState<{ type: string; price: string }[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [managerName, setManagerName] = useState('');
@@ -51,13 +51,7 @@ export default function AddHostelScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.backText, { color: colors.text }]}>←</Text>
-        </TouchableOpacity>
-      </View>
-
+      
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Progress */}
         <View style={styles.progressContainer}>
@@ -79,7 +73,7 @@ export default function AddHostelScreen() {
           </View>
           <Input
             label="Official Registration Name"
-            placeholder="e.g. Hostel Hoistels"
+            placeholder="e.g. Htc Towers"
             value={hostelName}
             onChangeText={setHostelName}
           />
@@ -103,17 +97,21 @@ export default function AddHostelScreen() {
             <View style={styles.coordinateItem}>
               <Text style={[styles.coordinateLabel, { color: colors.textSecondary }]}>LATITUDE</Text>
               <TextInput
-                style={[styles.coordinateInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
+                style={[styles.coordinateInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                 value={latitude}
                 onChangeText={setLatitude}
+                placeholder="e.g. 5.6037"
+                placeholderTextColor={colors.placeholder}
               />
             </View>
             <View style={styles.coordinateItem}>
               <Text style={[styles.coordinateLabel, { color: colors.textSecondary }]}>LONGITUDE</Text>
               <TextInput
-                style={[styles.coordinateInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
+                style={[styles.coordinateInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                 value={longitude}
                 onChangeText={setLongitude}
+                placeholder="e.g. -0.1870"
+                placeholderTextColor={colors.placeholder}
               />
             </View>
           </View>
@@ -133,8 +131,9 @@ export default function AddHostelScreen() {
           {roomTypes.map((room, index) => (
             <View key={index} style={styles.roomTypeRow}>
               <TextInput
-                style={[styles.roomTypeInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
+                style={[styles.roomTypeInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                 placeholder="TYPE OF ROOM"
+                placeholderTextColor={colors.placeholder}
                 value={room.type}
                 onChangeText={(text) => {
                   const updated = [...roomTypes];
@@ -143,8 +142,9 @@ export default function AddHostelScreen() {
                 }}
               />
               <TextInput
-                style={[styles.priceInput, { backgroundColor: colors.inputBackground, color: colors.text }]}
+                style={[styles.priceInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
                 placeholder="₵ 0.00"
+                placeholderTextColor={colors.placeholder}
                 value={room.price}
                 onChangeText={(text) => {
                   const updated = [...roomTypes];
@@ -202,6 +202,7 @@ export default function AddHostelScreen() {
           <TextInput
             style={[styles.customAmenityInput, { backgroundColor: colors.inputBackground, color: colors.text, borderColor: colors.border }]}
             placeholder="Add custom amenity"
+            placeholderTextColor={colors.placeholder}
           />
         </View>
 
