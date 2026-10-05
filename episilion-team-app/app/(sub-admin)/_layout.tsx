@@ -35,6 +35,8 @@ export default function SubAdminLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
         }} 
       />
+      <Tabs.Screen name="add-hostel" options={{ href: null }} />
+      <Tabs.Screen name="update-hostel" options={{ href: null }} />
     </Tabs>
   );
 }
