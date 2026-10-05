@@ -16,14 +16,13 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    // Temporarily disable auth redirect for testing
-    // if (!user) {
-    //   router.replace('/(auth)/login');
-    // } else if (role === 'super_admin') {
-    //   router.replace('/(super-admin)');
-    // } else if (role === 'sub_admin') {
-    //   router.replace('/(sub-admin)');
-    // }
+    if (!user) {
+      router.replace('/(auth)/login');
+    } else if (role === 'super_admin') {
+      router.replace('/(super-admin)');
+    } else if (role === 'sub_admin') {
+      router.replace('/(sub-admin)');
+    }
   }, [user, role, router]);
 
   return (
