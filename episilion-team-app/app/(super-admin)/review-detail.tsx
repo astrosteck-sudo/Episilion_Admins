@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,16 @@ import {
   Image,
   Linking,
   Alert,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../src/store/themeStore';
+import { getHostel, approveHostel, rejectHostel, type HostelDetailResponse } from '../../src/api/hostels';
+
+const PLACEHOLDER_IMAGE = require('../../assets/episilion_logo.png');
 
 interface RoomType {
   type: string;
@@ -37,116 +42,233 @@ interface ReviewDetail {
   managerPhone: string;
   managerWhatsapp: string;
   managerEmail: string;
-  image: any;
+  images: string[];
+  status: string;
 }
 
-const REVIEWS: Record<string, ReviewDetail> = {
-  '1': {
-    id: '1',
-    name: 'Hab3 Hostels (Annex B)',
-    location: 'Madina, Accra',
-    price: '₵ 4,500',
-    scout: 'Kwame Mensah',
-    scoutRole: 'Field Scout • Legon Sector',
-    scoutPhone: '+233 24 000 0000',
-    latitude: '5.6037',
-    longitude: '-0.1870',
-    capturedAt: 'Captured 2 hrs ago',
-    roomTypes: [
-      { type: '1 in a room', price: '₵ 4,500' },
-      { type: '2 in a room', price: '₵ 3,800' },
-      { type: '3 in a room', price: '₵ 3,200' },
-    ],
-    amenities: ['Free Water', 'Free Light', 'Security', 'Wifi'],
-    facilities: ['Free Water', 'Free Light', 'Security', 'Wifi', 'Study Room'],
-    managerName: 'Mr. Emmanuel Darko',
-    managerPhone: '+233 24 111 2222',
-    managerWhatsapp: '+233 24 111 2222',
-    managerEmail: 'emmanuel.darko@episilion.com',
-    image: require('../../assets/episilion_logo.png'),
-  },
-  '2': {
-    id: '2',
-    name: 'University Hall',
-    location: 'KNUST, Kumasi',
-    price: '₵ 3,200',
-    scout: 'Sarah K.',
-    scoutRole: 'Field Scout • Kumasi Sector',
-    scoutPhone: '+233 20 333 4444',
-    latitude: '6.6885',
-    longitude: '-1.6244',
-    capturedAt: 'Captured 5 hrs ago',
-    roomTypes: [
-      { type: '2 in a room', price: '₵ 3,200' },
-      { type: '4 in a room', price: '₵ 2,400' },
-    ],
-    amenities: ['Bed', 'Mattress', 'Fan', 'Wardrobe'],
-    facilities: ['Bed', 'Mattress', 'Fan', 'Wardrobe', 'Kitchen'],
-    managerName: 'Mrs. Akosua Boateng',
-    managerPhone: '+233 20 555 6666',
-    managerWhatsapp: '+233 20 555 6666',
-    managerEmail: 'akosua.boateng@episilion.com',
-    image: require('../../assets/episilion_logo.png'),
-  },
-  '3': {
-    id: '3',
-    name: 'Campus View Lodge',
-    location: 'Madina, Accra',
-    price: '₵ 2,800',
-    scout: 'John D.',
-    scoutRole: 'Field Scout • Madina Sector',
-    scoutPhone: '+233 27 777 8888',
-    latitude: '5.6836',
-    longitude: '-0.1667',
-    capturedAt: 'Captured 1 day ago',
-    roomTypes: [
-      { type: '1 in a room', price: '₵ 2,800' },
-      { type: '2 in a room', price: '₵ 2,200' },
-    ],
-    amenities: ['Free Water', 'DSTV Cable', 'Security'],
-    facilities: ['Free Water', 'DSTV Cable', 'Security', 'Study Room'],
-    managerName: 'Mr. Kofi Asante',
-    managerPhone: '+233 27 999 0000',
-    managerWhatsapp: '+233 27 999 0000',
-    managerEmail: 'kofi.asante@episilion.com',
-    image: require('../../assets/episilion_logo.png'),
-  },
+const formatCedis = (value: number | null | undefined) =>
+  value === null || value === undefined ? 'N/A' : `₵ ${Number(value).toLocaleString()}`;
+
+/** Human friendly "captured X ago" label from an ISO timestamp. */
+const timeAgo = (iso: string | null | undefined) => {
+  if (!iso) return 'Just now';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.max(0, Math.round(diffMs / 60000));
+  if (minutes < 60) return `Captured ${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `Captured ${hours} hr${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `Captured ${days} day${days === 1 ? '' : 's'} ago`;
 };
+
+const initialsOf = (name: string) =>
+  name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+/** Flattens the API response into the shape the screen renders. */
+function toReviewDetail(data: HostelDetailResponse): ReviewDetail {
+  const { hostel, location, contact, rooms, amenities, furnishing, media } = data;
+  const scoutName = hostel.submitted_by_name || 'Unknown scout';
+
+  const roomTypes: RoomType[] = rooms.map((room) => ({
+    type: room.room_type || 'Room',
+    price: formatCedis(room.price),
+  }));
+
+  const images = media.length
+    ? media.map((item) => item.url)
+    : hostel.main_image
+      ? [hostel.main_image]
+      : [];
+
+  const minPrice = rooms.reduce<number | null>(
+    (min, room) => (room.price !== null && (min === null || room.price < min) ? room.price : min),
+    null
+  );
+
+  return {
+    id: hostel.hostel_id,
+    name: hostel.name,
+    location:
+      [hostel.directions, hostel.university].filter(Boolean).join(', ') || 'Location not provided',
+    price: roomTypes.length
+      ? minPrice !== null
+        ? `From ${formatCedis(minPrice)}`
+        : roomTypes[0].price
+      : 'N/A',
+    scout: scoutName,
+    scoutRole: `Field Scout • Submitted by ${hostel.submitted_by_email || 'team member'}`,
+    scoutPhone: contact?.phone || '',
+    latitude: location?.latitude !== null && location?.latitude !== undefined ? String(location.latitude) : '',
+    longitude:
+      location?.longitude !== null && location?.longitude !== undefined ? String(location.longitude) : '',
+    capturedAt: timeAgo(hostel.created_at),
+    roomTypes,
+    amenities,
+    facilities: furnishing,
+    managerName: contact?.manager_name || 'Not provided',
+    managerPhone: contact?.phone || '',
+    managerWhatsapp: contact?.whatsapp || contact?.phone || '',
+    managerEmail: contact?.email || '',
+    images,
+    status: hostel.status,
+  };
+}
 
 export default function ReviewDetailScreen() {
   const colors = useThemeStore((state) => state.colors);
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const review = REVIEWS[id ?? '1'] ?? REVIEWS['1'];
+  const [review, setReview] = useState<ReviewDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const [activeImage, setActiveImage] = useState(0);
 
-  const mapUri = `https://maps.googleapis.com/maps/api/staticmap?center=${review.latitude},${review.longitude}&zoom=15&size=600x400&maptype=roadmap&markers=color:red%7Clabel:C%7C${review.latitude},${review.longitude}&key=AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk`;
+  const load = useCallback(async () => {
+    if (!id) {
+      setError('No hostel selected.');
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setError('');
+      setIsLoading(true);
+      const data = await getHostel(String(id));
+      setReview(toReviewDetail(data));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to load hostel');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const mapUri = review?.latitude && review?.longitude
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${review.latitude},${review.longitude}&zoom=15&size=600x400&maptype=roadmap&markers=color:red%7Clabel:C%7C${review.latitude},${review.longitude}&key=AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk`
+    : null;
 
   const openInMaps = () => {
+    if (!review) return;
     const url = `https://www.google.com/maps/search/?api=1&query=${review.latitude},${review.longitude}`;
-    Linking.openURL(url).catch(() =>
-      Alert.alert('Error', 'Unable to open Google Maps.')
-    );
+    Linking.openURL(url).catch(() => Alert.alert('Error', 'Unable to open Google Maps.'));
   };
 
   const callNumber = (number: string) => {
+    if (!number) return;
     Linking.openURL(`tel:${number.replace(/\s/g, '')}`).catch(() =>
       Alert.alert('Error', 'Unable to place call.')
     );
   };
 
+  const runDecision = async (decision: 'approve' | 'reject', reason?: string) => {
+    if (!review || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (decision === 'approve') {
+        await approveHostel(review.id);
+      } else {
+        await rejectHostel(review.id, reason as string);
+      }
+      Alert.alert(
+        decision === 'approve' ? 'Approved & Published' : 'Hostel Rejected',
+        decision === 'approve'
+          ? `"${review.name}" is now live on the public listing.`
+          : `"${review.name}" was rejected and the scout has been notified.`,
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (err: any) {
+      Alert.alert(
+        'Action failed',
+        err?.response?.data?.message || err?.message || 'Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleApprove = () => {
+    if (!review) return;
     Alert.alert('Approve & Publish', `Publish "${review.name}" to the public listing?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Approve', onPress: () => router.back() },
+      { text: 'Approve', onPress: () => runDecision('approve') },
     ]);
   };
 
   const handleReject = () => {
+    if (!review) return;
+    if (Platform.OS === 'ios' && typeof Alert.prompt === 'function') {
+      Alert.prompt(
+        'Reject Hostel',
+        `Why is "${review.name}" being rejected?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reject',
+            style: 'destructive',
+            onPress: (reason?: string) => runDecision('reject', reason?.trim() || 'Rejected by super admin'),
+          },
+        ],
+        'plain-text'
+      );
+      return;
+    }
     Alert.alert('Reject Hostel', `Reject "${review.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Reject', style: 'destructive', onPress: () => router.back() },
+      { text: 'Reject', style: 'destructive', onPress: () => runDecision('reject', 'Rejected by super admin') },
     ]);
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Review Detail</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.stateBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.stateText, { color: colors.textSecondary }]}>
+            Loading hostel details...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !review) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Review Detail</Text>
+          <View style={styles.headerButton} />
+        </View>
+        <View style={styles.stateBox}>
+          <Text style={[styles.stateText, { color: colors.error }]}>
+            {error || 'Hostel not found'}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={load}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -168,22 +290,48 @@ export default function ReviewDetailScreen() {
             <Text style={styles.statusBadgeText}>NEW HOSTEL</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: colors.accent }]}>
-            <Text style={styles.statusBadgeText}>PENDING VERIFICATION</Text>
+            <Text style={styles.statusBadgeText}>{review.status.toUpperCase()}</Text>
           </View>
         </View>
 
         {/* Photo Gallery */}
         <View style={styles.gallerySection}>
-          <Image source={review.image} style={styles.mainImage} resizeMode="cover" />
+          <Image
+            source={
+              review.images.length ? { uri: review.images[activeImage] } : PLACEHOLDER_IMAGE
+            }
+            style={styles.mainImage}
+            resizeMode="cover"
+          />
+          {review.images.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.thumbnailRow}
+            >
+              {review.images.map((uri, index) => (
+                <TouchableOpacity
+                  key={uri}
+                  onPress={() => setActiveImage(index)}
+                  style={[
+                    styles.thumbnailWrapper,
+                    {
+                      borderColor: index === activeImage ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Image source={{ uri }} style={styles.thumbnail} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Scout Card */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.scoutRow}>
             <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarText}>
-                {review.scout.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-              </Text>
+              <Text style={styles.avatarText}>{initialsOf(review.scout)}</Text>
             </View>
             <View style={styles.scoutInfo}>
               <Text style={[styles.scoutName, { color: colors.text }]}>{review.scout}</Text>
@@ -255,25 +403,35 @@ export default function ReviewDetailScreen() {
           </View>
 
           <View style={[styles.mapWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            <Image
-              source={{ uri: mapUri }}
-              style={styles.mapImage}
-              resizeMode="cover"
-              onError={(error) =>
-                console.warn('Map Image failed to load: ', error.nativeEvent.error)
-              }
-            />
+            {mapUri ? (
+              <Image
+                source={{ uri: mapUri }}
+                style={styles.mapImage}
+                resizeMode="cover"
+                onError={(error) =>
+                  console.warn('Map Image failed to load: ', error.nativeEvent.error)
+                }
+              />
+            ) : (
+              <View style={styles.mapPlaceholder}>
+                <Text style={[styles.stateText, { color: colors.textSecondary }]}>
+                  No coordinates were submitted for this hostel.
+                </Text>
+              </View>
+            )}
           </View>
 
-          <TouchableOpacity
-            style={[styles.mapsButton, { borderColor: colors.primary }]}
-            onPress={openInMaps}
-          >
-            <Ionicons name="navigate-outline" size={16} color={colors.primary} />
-            <Text style={[styles.mapsButtonText, { color: colors.primary }]}>
-              Open in Google Maps
-            </Text>
-          </TouchableOpacity>
+          {mapUri && (
+            <TouchableOpacity
+              style={[styles.mapsButton, { borderColor: colors.primary }]}
+              onPress={openInMaps}
+            >
+              <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+              <Text style={[styles.mapsButtonText, { color: colors.primary }]}>
+                Open in Google Maps
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Room Types & Prices */}
@@ -393,18 +551,26 @@ export default function ReviewDetailScreen() {
       {/* Bottom Action Bar */}
       <View style={[styles.actionBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.rejectButton, { borderColor: colors.error }]}
+          style={[styles.rejectButton, { borderColor: colors.error, opacity: isSubmitting ? 0.5 : 1 }]}
           onPress={handleReject}
+          disabled={isSubmitting}
         >
           <Ionicons name="close" size={18} color={colors.error} />
           <Text style={[styles.rejectText, { color: colors.error }]}>Reject</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.approveButton, { backgroundColor: colors.success }]}
+          style={[styles.approveButton, { backgroundColor: colors.success, opacity: isSubmitting ? 0.6 : 1 }]}
           onPress={handleApprove}
+          disabled={isSubmitting}
         >
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-          <Text style={styles.approveText}>Approve & Publish</Text>
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+              <Text style={styles.approveText}>Approve & Publish</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -714,6 +880,33 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   approveText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  stateBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 32,
+  },
+  stateText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',

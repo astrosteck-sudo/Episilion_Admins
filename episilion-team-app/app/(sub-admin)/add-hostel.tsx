@@ -19,6 +19,7 @@ import { useThemeStore } from "../../src/store/themeStore";
 import { router } from "expo-router";
 import { Input } from "../../src/components/Input";
 import { Button } from "../../src/components/Button";
+import { createHostel } from "../../src/api/hostels";
 
 export default function AddHostelScreen() {
   const colors = useThemeStore((state) => state.colors);
@@ -37,6 +38,7 @@ export default function AddHostelScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [locationError, setLocationError] = useState("");
   const [showMap, setShowMap] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const webViewRef = useRef(null);
 
   const takePhoto = async () => {
@@ -132,6 +134,66 @@ export default function AddHostelScreen() {
 
   const removeRoomType = (index: number) => {
     setRoomTypes(roomTypes.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    const missing: string[] = [];
+    if (!hostelName.trim()) missing.push("Hostel name");
+    if (!latitude.trim() || !longitude.trim()) missing.push("Location & coordinates");
+    if (!roomTypes.some((r) => r.type.trim())) missing.push("At least one room type");
+    if (!managerName.trim()) missing.push("Manager name");
+    if (!phoneNumber.trim()) missing.push("Phone number");
+    if (!photo) missing.push("A property photo");
+
+    if (missing.length) {
+      Alert.alert("Incomplete form", `Please complete:\n• ${missing.join("\n• ")}`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await createHostel({
+        name: hostelName.trim(),
+        latitude: latitude.trim(),
+        longitude: longitude.trim(),
+        roomTypes: roomTypes.filter((r) => r.type.trim()),
+        amenities: selectedAmenities,
+        managerName: managerName.trim(),
+        phone: phoneNumber.trim(),
+        whatsapp: whatsappNumber.trim() || undefined,
+        email: email.trim() || undefined,
+        photoUri: photo as string,
+      });
+
+      Alert.alert(
+        "Submitted for approval",
+        `"${result?.hostel?.name ?? hostelName}" has been sent to the super admin for review.`,
+        [{ text: "OK", onPress: () => router.replace("/(sub-admin)") }],
+      );
+
+      setHostelName("");
+      setLatitude("");
+      setLongitude("");
+      setRoomTypes([]);
+      setSelectedAmenities([]);
+      setManagerName("");
+      setPhoneNumber("");
+      setWhatsappNumber("");
+      setEmail("");
+      setPhoto(null);
+      setShowMap(false);
+      setSectionsCompleted(0);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Could not submit the hostel. Please try again.";
+      Alert.alert("Submission failed", message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -622,8 +684,13 @@ export default function AddHostelScreen() {
         {/* Submit Button */}
         <View style={styles.footer}>
           <Button
-            title="Submit For Approval (Complete & Submit)"
-            onPress={() => {}}
+            title={
+              isSubmitting
+                ? "Submitting..."
+                : "Submit For Approval (Complete & Submit)"
+            }
+            onPress={handleSubmit}
+            loading={isSubmitting}
           />
           <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
             Required fields must be completed before submission.

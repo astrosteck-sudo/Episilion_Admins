@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,48 +7,94 @@ import {
   ScrollView,
   TextInput,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../src/store/themeStore';
-import { router } from 'expo-router';
+import { useAuthStore } from '../../src/store/authStore';
+import { router, useFocusEffect } from 'expo-router';
+import {
+  listHostels,
+  getHostelStats,
+  type HostelListItem,
+  type HostelStats,
+} from '../../src/api/hostels';
+
+const PLACEHOLDER_IMAGE = require('../../assets/episilion_logo.png');
+
+const formatPrice = (min: number | null, max: number | null) => {
+  if (min === null && max === null) return 'N/A';
+  if (min !== null && max !== null && min !== max) return `₵ ${min.toLocaleString()} - ${max.toLocaleString()}`;
+  const value = min ?? max;
+  return `₵ ${(value as number).toLocaleString()}`;
+};
 
 export default function SuperAdminHomeScreen() {
   const colors = useThemeStore((state) => state.colors);
+  const user = useAuthStore((state) => state.user);
   const [activeFilter, setActiveFilter] = useState('All items');
+  const [hostels, setHostels] = useState<HostelListItem[]>([]);
+  const [stats, setStats] = useState<HostelStats>({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
-  const hostels = [
-    {
-      id: 1,
-      name: 'Premier Heights Annex',
-      location: 'Legon, Accra',
-      price: '₵ 4,500',
-      scout: 'Emmanuel A.',
-      image: require('../../assets/episilion_logo.png'),
-      isNew: true,
-    },
-    {
-      id: 2,
-      name: 'University Hall',
-      location: 'KNUST, Kumasi',
-      price: '₵ 3,200',
-      scout: 'Sarah K.',
-      image: require('../../assets/episilion_logo.png'),
-      isNew: true,
-    },
-    {
-      id: 3,
-      name: 'Campus View Lodge',
-      location: 'Madina, Accra',
-      price: '₵ 2,800',
-      scout: 'John D.',
-      image: require('../../assets/episilion_logo.png'),
-      isNew: true,
-    },
-  ];
+  const load = useCallback(async () => {
+    try {
+      setError('');
+      const [list, counters] = await Promise.all([listHostels('pending'), getHostelStats()]);
+      setHostels(list);
+      setStats(counters);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Failed to load hostels');
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        setIsLoading(true);
+        await load();
+        if (active) setIsLoading(false);
+      })();
+      return () => {
+        active = false;
+      };
+    }, [load]),
+  );
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await load();
+    setIsRefreshing(false);
+  }, [load]);
+
+  const firstName = (user?.name || 'Admin').split(' ')[0];
+
+  const visibleHostels = hostels.filter((hostel) => {
+    if (activeFilter === 'Today') {
+      const created = new Date(hostel.created_at);
+      const now = new Date();
+      return (
+        created.getDate() === now.getDate() &&
+        created.getMonth() === now.getMonth() &&
+        created.getFullYear() === now.getFullYear()
+      );
+    }
+    if (activeFilter === 'Update Requests') return false;
+    return true;
+  });
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
+      >
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <View style={styles.headerLeft}>
@@ -58,9 +104,11 @@ export default function SuperAdminHomeScreen() {
               resizeMode="contain"
             />
             <View>
-              <Text style={[styles.greeting, { color: colors.text }]}>Welcome back, Deon</Text>
+              <Text style={[styles.greeting, { color: colors.text }]}>Welcome back, {firstName}</Text>
               <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>5 items waiting for review</Text>
+                <Text style={styles.notificationText}>
+                  {stats.pending} {stats.pending === 1 ? 'item' : 'items'} waiting for review
+                </Text>
               </View>
             </View>
           </View>
@@ -74,13 +122,13 @@ export default function SuperAdminHomeScreen() {
             </View>
             <View style={styles.statContent}>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>New Hostels</Text>
-              <Text style={[styles.statValue, { color: colors.text }]}>3 in queue</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.pending} in queue</Text>
               <Text style={[styles.statHint, { color: colors.textSecondary }]}>
                 Awaiting your audit
               </Text>
             </View>
             <View style={[styles.statCountBadge, { backgroundColor: colors.success }]}>
-              <Text style={styles.statCountText}>3</Text>
+              <Text style={styles.statCountText}>{stats.pending}</Text>
             </View>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -88,14 +136,14 @@ export default function SuperAdminHomeScreen() {
               <Text style={styles.statIconText}>✏️</Text>
             </View>
             <View style={styles.statContent}>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Update Requests</Text>
-              <Text style={[styles.statValue, { color: colors.text }]}>2 waiting</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Approved Hostels</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.approved} live</Text>
               <Text style={[styles.statHint, { color: colors.textSecondary }]}>
-                Pending changes to review
+                Published to the site
               </Text>
             </View>
             <View style={[styles.statCountBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.statCountText}>2</Text>
+              <Text style={styles.statCountText}>{stats.approved}</Text>
             </View>
           </View>
         </View>
@@ -127,57 +175,85 @@ export default function SuperAdminHomeScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>New Entries</Text>
         </View>
 
-        {hostels.map((hostel) => (
-          <TouchableOpacity
-            key={hostel.id}
-            activeOpacity={0.85}
-            onPress={() => router.push(`/(super-admin)/review-detail?id=${hostel.id}`)}
-            style={[styles.hostelCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <View style={styles.hostelImageWrapper}>
-              <Image source={hostel.image} style={styles.hostelImage} />
-              {hostel.isNew && (
-                <View style={[styles.newBadge, { backgroundColor: colors.success }]}>
-                  <Text style={styles.newBadgeText}>NEW</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.hostelBody}>
-              <Text style={[styles.hostelName, { color: colors.text }]}>{hostel.name}</Text>
-              <Text style={[styles.hostelLocation, { color: colors.textSecondary }]}>
-                📍 {hostel.location}
-              </Text>
-
-              <View style={styles.hostelMetaRow}>
-                <View style={styles.hostelMetaItem}>
-                  <Text style={[styles.hostelMetaLabel, { color: colors.textSecondary }]}>
-                    PRICE
-                  </Text>
-                  <Text style={[styles.hostelPrice, { color: colors.primary }]}>
-                    {hostel.price}
-                  </Text>
-                </View>
-                <View style={[styles.hostelMetaDivider, { backgroundColor: colors.border }]} />
-                <View style={styles.hostelMetaItem}>
-                  <Text style={[styles.hostelMetaLabel, { color: colors.textSecondary }]}>
-                    SCOUT
-                  </Text>
-                  <Text style={[styles.hostelScout, { color: colors.text }]}>
-                    {hostel.scout}
-                  </Text>
-                </View>
+        {isLoading ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.stateText, { color: colors.textSecondary }]}>
+              Loading pending hostels...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.stateBox}>
+            <Text style={[styles.stateText, { color: colors.error }]}>{error}</Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: colors.primary }]}
+              onPress={onRefresh}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : visibleHostels.length === 0 ? (
+          <View style={styles.stateBox}>
+            <Text style={[styles.stateText, { color: colors.textSecondary }]}>
+              No hostels waiting for review.
+            </Text>
+          </View>
+        ) : (
+          visibleHostels.map((hostel) => (
+            <TouchableOpacity
+              key={hostel.hostel_id}
+              activeOpacity={0.85}
+              onPress={() => router.push(`/(super-admin)/review-detail?id=${hostel.hostel_id}`)}
+              style={[styles.hostelCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <View style={styles.hostelImageWrapper}>
+                <Image
+                  source={hostel.main_image ? { uri: hostel.main_image } : PLACEHOLDER_IMAGE}
+                  style={styles.hostelImage}
+                />
+                {hostel.status === 'pending' && (
+                  <View style={[styles.newBadge, { backgroundColor: colors.success }]}>
+                    <Text style={styles.newBadgeText}>NEW</Text>
+                  </View>
+                )}
               </View>
 
-              <TouchableOpacity
-                style={[styles.auditButton, { backgroundColor: colors.primary }]}
-                onPress={() => router.push(`/(super-admin)/review-detail?id=${hostel.id}`)}
-              >
-                <Text style={styles.auditButtonText}>Audit Hostel</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+              <View style={styles.hostelBody}>
+                <Text style={[styles.hostelName, { color: colors.text }]}>{hostel.name}</Text>
+                <Text style={[styles.hostelLocation, { color: colors.textSecondary }]}>
+                  📍 {[hostel.directions, hostel.university].filter(Boolean).join(', ') || 'Location not set'}
+                </Text>
+
+                <View style={styles.hostelMetaRow}>
+                  <View style={styles.hostelMetaItem}>
+                    <Text style={[styles.hostelMetaLabel, { color: colors.textSecondary }]}>
+                      PRICE
+                    </Text>
+                    <Text style={[styles.hostelPrice, { color: colors.primary }]}>
+                      {formatPrice(hostel.price_min, hostel.price_max)}
+                    </Text>
+                  </View>
+                  <View style={[styles.hostelMetaDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.hostelMetaItem}>
+                    <Text style={[styles.hostelMetaLabel, { color: colors.textSecondary }]}>
+                      SCOUT
+                    </Text>
+                    <Text style={[styles.hostelScout, { color: colors.text }]}>
+                      {hostel.submitted_by_name || 'Unknown'}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.auditButton, { backgroundColor: colors.primary }]}
+                  onPress={() => router.push(`/(super-admin)/review-detail?id=${hostel.hostel_id}`)}
+                >
+                  <Text style={styles.auditButtonText}>Audit Hostel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -384,6 +460,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   auditButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  stateBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  stateText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',

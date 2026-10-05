@@ -8,5 +8,6 @@ app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 app.use('/api/team/auth', require('./routes/authRoutes'));
+app.use('/api/team/hostels', require('./routes/hostelRoutes'));
 
 module.exports = app;
