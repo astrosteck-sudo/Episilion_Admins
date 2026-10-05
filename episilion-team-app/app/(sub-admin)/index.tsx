@@ -13,8 +13,6 @@ import { router } from 'expo-router';
 
 export default function SubAdminHomeScreen() {
   const colors = useThemeStore((state) => state.colors);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
-  const colorScheme = useThemeStore((state) => state.colorScheme);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -34,9 +32,6 @@ export default function SubAdminHomeScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
-            <Text style={styles.themeIcon}>{colorScheme === 'dark' ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Main Actions */}
@@ -48,7 +43,7 @@ export default function SubAdminHomeScreen() {
           >
             <View style={styles.cardHeader}>
               <View style={styles.cardIconContainer}>
-                <Text style={styles.icon}>+</Text>
+                <Text style={styles.cardIcon}>+</Text>
               </View>
               <TouchableOpacity style={styles.cardArrowButton}>
                 <Text style={styles.arrow}>→</Text>
@@ -73,7 +68,7 @@ export default function SubAdminHomeScreen() {
           >
             <View style={styles.cardHeader}>
               <View style={[styles.cardIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Text style={[styles.icon, { color: '#4CAF50' }]}>✎</Text>
+                <Text style={[styles.cardIcon, { color: '#4CAF50' }]}>✎</Text>
               </View>
               <TouchableOpacity style={[styles.cardArrowButton, { backgroundColor: '#F3E5F5' }]}>
                 <Text style={[styles.arrow, { color: '#7B1FA2' }]}>→</Text>
@@ -169,12 +164,6 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 14,
   },
-  themeToggle: {
-    padding: 8,
-  },
-  themeIcon: {
-    fontSize: 24,
-  },
   actionsContainer: {
     gap: 16,
     marginBottom: 32,
@@ -213,7 +202,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  icon: {
+  cardIcon: {
     fontSize: 28,
     color: '#FFFFFF',
     fontWeight: '300',
