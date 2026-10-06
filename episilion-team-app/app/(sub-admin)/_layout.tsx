@@ -1,47 +1,52 @@
 import { Tabs } from 'expo-router';
-import { useThemeStore } from '../../src/store/themeStore';
-import { Ionicons } from '@expo/vector-icons';
+import { TabBarIcon, useTabScreenOptions } from '../../src/components/AppTabs';
 
 export default function SubAdminLayout() {
-  const { colorScheme } = useThemeStore();
+  const screenOptions = useTabScreenOptions();
 
   return (
-    <Tabs
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
-        },
-        headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-        tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF',
-        },
-        tabBarActiveTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-        tabBarInactiveTintColor: colorScheme === 'dark' ? '#98989D' : '#8E8E93',
-      }}
-    >
-      <Tabs.Screen 
-        name="index" 
-        options={{ 
+    <Tabs screenOptions={screenOptions}>
+      <Tabs.Screen
+        name="index"
+        options={{
           title: 'Home',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
-        }} 
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon name="home-outline" focusedName="home" color={color} size={size} focused={focused} />
+          ),
+        }}
       />
-      <Tabs.Screen 
-        name="submissions" 
-        options={{ 
-          title: 'My Submissions',
+      <Tabs.Screen
+        name="submissions"
+        options={{
+          title: 'Submissions',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} />,
-        }} 
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon
+              name="document-text-outline"
+              focusedName="document-text"
+              color={color}
+              size={size}
+              focused={focused}
+            />
+          ),
+        }}
       />
-      <Tabs.Screen 
-        name="settings" 
-        options={{ 
+      <Tabs.Screen
+        name="settings"
+        options={{
           title: 'Settings',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
-        }} 
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon
+              name="settings-outline"
+              focusedName="settings"
+              color={color}
+              size={size}
+              focused={focused}
+            />
+          ),
+        }}
       />
       <Tabs.Screen name="add-hostel" options={{ href: null }} />
       <Tabs.Screen name="update-hostel" options={{ href: null }} />
