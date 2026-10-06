@@ -43,6 +43,7 @@ interface ReviewDetail {
   managerEmail: string;
   images: string[];
   status: string;
+  installmentAllowed: boolean;
 }
 
 const formatCedis = (value: number | null | undefined) =>
@@ -70,7 +71,7 @@ const initialsOf = (name: string) =>
 
 /** Flattens the API response into the shape the screen renders. */
 function toReviewDetail(data: HostelDetailResponse): ReviewDetail {
-  const { hostel, location, contact, rooms, amenities, furnishing, media } = data;
+  const { hostel, location, contact, rooms, amenities, furnishing, media, pricing } = data;
   const scoutName = hostel.submitted_by_name || 'Unknown scout';
 
   const roomTypes: RoomType[] = rooms.map((room) => ({
@@ -115,6 +116,7 @@ function toReviewDetail(data: HostelDetailResponse): ReviewDetail {
     managerEmail: contact?.email || '',
     images,
     status: hostel.status,
+    installmentAllowed: Boolean(pricing?.installment_allowed),
   };
 }
 
@@ -453,6 +455,19 @@ export default function ReviewDetailScreen() {
               <Text style={[styles.roomPrice, { color: colors.primary }]}>{room.price}</Text>
             </View>
           ))}
+
+          <View style={[styles.installmentRow, { borderTopColor: colors.divider }]}>
+            <Ionicons
+              name={review.installmentAllowed ? 'checkmark-circle' : 'close-circle'}
+              size={16}
+              color={review.installmentAllowed ? colors.success : colors.textSecondary}
+            />
+            <Text style={[styles.installmentText, { color: colors.text }]}>
+              {review.installmentAllowed
+                ? 'Semester installments allowed'
+                : 'Full payment only'}
+            </Text>
+          </View>
         </View>
 
         {/* Amenities */}
@@ -731,6 +746,18 @@ const styles = StyleSheet.create({
   },
   sectionCount: {
     fontSize: 12,
+  },
+  installmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  installmentText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   capturedBadge: {
     paddingHorizontal: 8,

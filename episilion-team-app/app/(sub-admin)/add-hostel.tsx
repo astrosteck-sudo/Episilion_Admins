@@ -7,6 +7,7 @@ import {
   ScrollView,
   TextInput,
   Image,
+  Switch,
   PermissionsAndroid,
   Platform,
 } from "react-native";
@@ -33,6 +34,7 @@ export default function AddHostelScreen() {
     [],
   );
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [allowInstallments, setAllowInstallments] = useState(false);
   const [managerName, setManagerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
@@ -190,6 +192,7 @@ export default function AddHostelScreen() {
         longitude: longitude.trim(),
         roomTypes: roomTypes.filter((r) => r.type.trim()),
         amenities: selectedAmenities,
+        allowInstallments,
         managerName: managerName.trim(),
         phone: phoneNumber.trim(),
         whatsapp: whatsappNumber.trim() || undefined,
@@ -208,6 +211,7 @@ export default function AddHostelScreen() {
       setLongitude("");
       setRoomTypes([]);
       setSelectedAmenities([]);
+      setAllowInstallments(false);
       setManagerName("");
       setPhoneNumber("");
       setWhatsappNumber("");
@@ -519,12 +523,21 @@ export default function AddHostelScreen() {
             </Text>
           </TouchableOpacity>
           <View style={styles.toggleRow}>
-            <Text style={[styles.toggleLabel, { color: colors.text }]}>
-              Allow Semester Installments?
-            </Text>
-            <View style={[styles.toggle, { backgroundColor: colors.primary }]}>
-              <Text style={styles.toggleText}>ON</Text>
+            <View style={styles.toggleTextWrap}>
+              <Text style={[styles.toggleLabel, { color: colors.text }]}>
+                Allow Semester Installments
+              </Text>
+              <Text style={[styles.toggleHint, { color: colors.textSecondary }]}>
+                Students can pay in two instalments
+              </Text>
             </View>
+            <Switch
+              value={allowInstallments}
+              onValueChange={setAllowInstallments}
+              trackColor={{ false: colors.border, true: colors.success }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor={colors.border}
+            />
           </View>
         </View>
 
@@ -898,21 +911,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+  },
+  toggleTextWrap: {
+    flex: 1,
+    gap: 2,
   },
   toggleLabel: {
     fontSize: 14,
-  },
-  toggle: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  toggleText: {
-    color: "#FFFFFF",
-    fontSize: 12,
     fontWeight: "600",
+  },
+  toggleHint: {
+    fontSize: 12,
   },
   amenitiesGrid: {
     flexDirection: "row",

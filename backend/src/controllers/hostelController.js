@@ -211,10 +211,12 @@ exports.createHostel = async (req, res) => {
 
     const priceMin = num(body.price_min);
     const priceMax = num(body.price_max);
+    const installmentAllowed = bool(body.installment_allowed);
     const hasPricing =
       priceMin !== null ||
       priceMax !== null ||
       str(body.billing_period) ||
+      installmentAllowed !== null ||
       num(body.utilities_fee) !== null ||
       num(body.maintenance_fee) !== null ||
       num(body.caution_deposit) !== null;
@@ -230,7 +232,7 @@ exports.createHostel = async (req, res) => {
           priceMin,
           priceMax,
           str(body.billing_period),
-          bool(body.installment_allowed),
+          installmentAllowed,
           num(body.utilities_fee),
           num(body.maintenance_fee),
           num(body.caution_deposit),

@@ -81,6 +81,7 @@ export interface NewHostelPayload {
   distanceToCampus?: string;
   roomTypes: { type: string; price: string }[];
   amenities: string[];
+  allowInstallments?: boolean;
   managerName: string;
   phone: string;
   whatsapp?: string;
@@ -149,6 +150,7 @@ export async function createHostel(payload: NewHostelPayload) {
 
   form.append('room_types', JSON.stringify(payload.roomTypes.filter((r) => r.type)));
   form.append('amenities', JSON.stringify(payload.amenities));
+  form.append('installment_allowed', payload.allowInstallments ? 'true' : 'false');
 
   form.append('photos', {
     uri: payload.photoUri,
