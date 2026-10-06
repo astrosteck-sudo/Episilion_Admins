@@ -11,6 +11,8 @@ interface InputProps {
   keyboardType?: 'default' | 'email-address' | 'numeric';
   rightAction?: React.ReactNode;
   onRightActionPress?: () => void;
+  /** Validation message shown beneath the field; also tints the border. */
+  error?: string;
 }
 
 export function Input({
@@ -22,13 +24,22 @@ export function Input({
   keyboardType = 'default',
   rightAction,
   onRightActionPress,
+  error,
 }: InputProps) {
   const colors = useThemeStore((state) => state.colors);
 
   return (
     <View style={styles.container}>
       {label && <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>}
-      <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.inputBackground }]}>
+      <View
+        style={[
+          styles.inputContainer,
+          {
+            borderColor: error ? colors.error : colors.border,
+            backgroundColor: colors.inputBackground,
+          },
+        ]}
+      >
         <TextInput
           style={[styles.input, { color: colors.text }]}
           placeholder={placeholder}
@@ -45,6 +56,7 @@ export function Input({
           </TouchableOpacity>
         )}
       </View>
+      {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
     </View>
   );
 }
@@ -72,5 +84,10 @@ const styles = StyleSheet.create({
   },
   rightAction: {
     marginLeft: 8,
+  },
+  error: {
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 2,
   },
 });

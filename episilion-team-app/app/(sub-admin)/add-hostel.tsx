@@ -14,6 +14,7 @@ import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useThemeStore } from "../../src/store/themeStore";
 import { router } from "expo-router";
 import { Input } from "../../src/components/Input";
@@ -94,6 +95,21 @@ export default function AddHostelScreen() {
     "Fan",
   ];
 
+  /** Phone numbers must be exactly 10 digits. */
+  const PHONE_LENGTH = 10;
+
+  const sanitizePhone = (value: string) => value.replace(/\D/g, "").slice(0, PHONE_LENGTH);
+
+  const phoneError =
+    phoneNumber.length > 0 && phoneNumber.length !== PHONE_LENGTH
+      ? `Phone number must be exactly ${PHONE_LENGTH} digits`
+      : "";
+
+  const whatsappError =
+    whatsappNumber.length > 0 && whatsappNumber.length !== PHONE_LENGTH
+      ? `WhatsApp number must be exactly ${PHONE_LENGTH} digits`
+      : "";
+
   useEffect(() => {
     // Request location and camera permissions when component mounts
     (async () => {
@@ -150,6 +166,19 @@ export default function AddHostelScreen() {
 
     if (missing.length) {
       alert("Incomplete form", `Please complete:\n• ${missing.join("\n• ")}`);
+      return;
+    }
+
+    if (phoneNumber.length !== PHONE_LENGTH) {
+      alert("Invalid phone number", `The phone number must be exactly ${PHONE_LENGTH} digits.`);
+      return;
+    }
+
+    if (whatsappNumber.length > 0 && whatsappNumber.length !== PHONE_LENGTH) {
+      alert(
+        "Invalid WhatsApp number",
+        `The WhatsApp number must be exactly ${PHONE_LENGTH} digits.`,
+      );
       return;
     }
 
@@ -227,7 +256,7 @@ export default function AddHostelScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.sectionNumberText}>1</Text>
+              <Ionicons name="business-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Hostel Name
@@ -258,7 +287,7 @@ export default function AddHostelScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.sectionNumberText}>2</Text>
+              <Ionicons name="location-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Location & Coordinates
@@ -294,6 +323,7 @@ export default function AddHostelScreen() {
               }
             }}
           >
+            <Ionicons name="navigate" size={17} color="#FFFFFF" />
             <Text style={styles.gpsButtonText}>Use my current GPS</Text>
           </TouchableOpacity>
           <View style={styles.coordinatesRow}>
@@ -429,7 +459,7 @@ export default function AddHostelScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.sectionNumberText}>3</Text>
+              <Ionicons name="pricetags-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Room Types & Prices
@@ -464,7 +494,7 @@ export default function AddHostelScreen() {
                     borderColor: colors.border,
                   },
                 ]}
-                placeholder="â‚µ 0.00"
+                placeholder="₵ 0.00"
                 placeholderTextColor={colors.placeholder}
                 value={room.price}
                 onChangeText={(text) => {
@@ -473,14 +503,19 @@ export default function AddHostelScreen() {
                   setRoomTypes(updated);
                 }}
               />
-              <TouchableOpacity onPress={() => removeRoomType(index)}>
-                <Text style={styles.deleteIcon}>ðŸ—‘ï¸</Text>
+              <TouchableOpacity
+                onPress={() => removeRoomType(index)}
+                style={[styles.deleteButton, { backgroundColor: colors.inputBackground }]}
+                hitSlop={6}
+              >
+                <Ionicons name="trash-outline" size={17} color={colors.error} />
               </TouchableOpacity>
             </View>
           ))}
           <TouchableOpacity style={styles.addRoomButton} onPress={addRoomType}>
+            <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
             <Text style={[styles.addRoomText, { color: colors.primary }]}>
-              + Add another room type
+              Add another room type
             </Text>
           </TouchableOpacity>
           <View style={styles.toggleRow}>
@@ -507,7 +542,7 @@ export default function AddHostelScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.sectionNumberText}>4</Text>
+              <Ionicons name="sparkles-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Facilities & Amenities
@@ -571,7 +606,7 @@ export default function AddHostelScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.sectionNumberText}>5</Text>
+              <Ionicons name="person-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Hostel Manager
@@ -585,17 +620,19 @@ export default function AddHostelScreen() {
           />
           <Input
             label="Phone Number"
-            placeholder="Enter phone number"
+            placeholder="e.g. 0244123456"
             value={phoneNumber}
-            onChangeText={setPhoneNumber}
+            onChangeText={(text) => setPhoneNumber(sanitizePhone(text))}
             keyboardType="numeric"
+            error={phoneError}
           />
           <Input
             label="Whatsapp Booking Number"
-            placeholder="Enter whatsapp number"
+            placeholder="e.g. 0244123456"
             value={whatsappNumber}
-            onChangeText={setWhatsappNumber}
+            onChangeText={(text) => setWhatsappNumber(sanitizePhone(text))}
             keyboardType="numeric"
+            error={whatsappError}
           />
           <Input
             label="Email Address"
@@ -620,7 +657,7 @@ export default function AddHostelScreen() {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Text style={styles.sectionNumberText}>6</Text>
+              <Ionicons name="images-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Property Photos
@@ -638,7 +675,7 @@ export default function AddHostelScreen() {
                 style={styles.removePhotoButton}
                 onPress={() => setPhoto(null)}
               >
-                <Text style={styles.removePhotoText}>ðŸ—‘ï¸</Text>
+                <Ionicons name="close" size={16} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           ) : (
@@ -653,9 +690,14 @@ export default function AddHostelScreen() {
                 ]}
                 onPress={takePhoto}
               >
-                <Text style={styles.photoUploadIcon}>ðŸ“·</Text>
+                <View style={[styles.photoUploadIconWrap, { backgroundColor: colors.primary + "1A" }]}>
+                  <Ionicons name="camera-outline" size={24} color={colors.primary} />
+                </View>
                 <Text style={[styles.photoUploadText, { color: colors.text }]}>
                   Take Photo
+                </Text>
+                <Text style={[styles.photoUploadHint, { color: colors.textSecondary }]}>
+                  Use the camera
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -668,9 +710,14 @@ export default function AddHostelScreen() {
                 ]}
                 onPress={pickImage}
               >
-                <Text style={styles.photoUploadIcon}>ðŸ–¼ï¸</Text>
+                <View style={[styles.photoUploadIconWrap, { backgroundColor: colors.secondary + "1A" }]}>
+                  <Ionicons name="images-outline" size={24} color={colors.secondary} />
+                </View>
                 <Text style={[styles.photoUploadText, { color: colors.text }]}>
                   Gallery
+                </Text>
+                <Text style={[styles.photoUploadHint, { color: colors.textSecondary }]}>
+                  Choose an existing photo
                 </Text>
               </TouchableOpacity>
             </View>
@@ -743,17 +790,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
-  },
-  sectionNumberText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
   },
   sectionTitle: {
     fontSize: 16,
@@ -772,9 +814,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   gpsButton: {
-    padding: 12,
-    borderRadius: 8,
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
     marginBottom: 16,
   },
   gpsButtonText: {
@@ -830,10 +875,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     fontSize: 14,
   },
-  deleteIcon: {
-    fontSize: 20,
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   addRoomButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     padding: 12,
     marginBottom: 12,
   },
@@ -894,19 +947,28 @@ const styles = StyleSheet.create({
   },
   photoUploadButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 8,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: 8,
   },
-  photoUploadIcon: {
-    fontSize: 24,
-    marginBottom: 4,
+  photoUploadIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
   photoUploadText: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  photoUploadHint: {
+    fontSize: 11,
+    textAlign: "center",
   },
   photoPreview: {
     position: "relative",
@@ -915,21 +977,18 @@ const styles = StyleSheet.create({
   photoImage: {
     width: "100%",
     height: 200,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   removePhotoButton: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 16,
     width: 32,
     height: 32,
     justifyContent: "center",
     alignItems: "center",
-  },
-  removePhotoText: {
-    fontSize: 16,
   },
   daylightCheckbox: {
     marginTop: 8,
