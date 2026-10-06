@@ -3,6 +3,7 @@ import { View, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { ThemeProvider } from '../src/providers/ThemeProvider';
+import { AppAlertProvider } from '../src/components/AppAlert';
 import { useAuthStore } from '../src/store/authStore';
 import { useThemeStore } from '../src/store/themeStore';
 
@@ -50,7 +51,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <RootLayoutNav />
+      <AppAlertProvider>
+        <RootLayoutNav />
+      </AppAlertProvider>
     </ThemeProvider>
   );
 }

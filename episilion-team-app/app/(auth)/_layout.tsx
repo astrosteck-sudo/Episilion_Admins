@@ -13,7 +13,7 @@ export default function AuthLayout() {
         headerTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
       }}
     >
-      <Stack.Screen name="login" options={{ title: 'Login' }} />
+      <Stack.Screen name="login" options={{ title: 'Login'}} />
       <Stack.Screen name="otp" options={{ title: 'OTP' }} />
     </Stack>
   );

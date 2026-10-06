@@ -5,9 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Modal,
   Switch,
-  ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore, isPushSupported } from '../store/notificationStore';
+import { useAppAlert } from './AppAlert';
 import { router } from 'expo-router';
 
 const APP_VERSION = '1.0.0';
@@ -170,9 +169,8 @@ export default function SettingsScreen() {
   const notificationsUpdating = useNotificationStore((state) => state.isUpdating);
   const loadPreference = useNotificationStore((state) => state.loadPreference);
   const setNotificationsEnabled = useNotificationStore((state) => state.setEnabled);
+  const { alert } = useAppAlert();
 
-  const [isLogoutVisible, setIsLogoutVisible] = useState(false);
-  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
   const [pushSupported, setPushSupported] = useState(true);
 
   useEffect(() => {
@@ -183,14 +181,25 @@ export default function SettingsScreen() {
   const handleToggleNotifications = async (value: boolean) => {
     const result = await setNotificationsEnabled(value);
     if (!result.ok && result.message) {
-      setNotice({ title: 'Notifications unavailable', message: result.message });
+      alert('Notifications unavailable', result.message);
     }
   };
 
   const handleLogout = () => {
-    setIsLogoutVisible(false);
     clearAuth();
     router.replace('/(auth)/login');
+  };
+
+  const confirmLogout = () => {
+    alert(
+      'Log out?',
+      'You will need to sign in again to review hostels and manage submissions on this device.',
+      [
+        { text: 'Stay signed in', style: 'cancel' },
+        { text: 'Log out', style: 'destructive', onPress: handleLogout },
+      ],
+      { variant: 'question' },
+    );
   };
 
   const roleLabel = role === 'super_admin' ? 'Super Admin' : 'Sub Admin';
@@ -297,7 +306,7 @@ export default function SettingsScreen() {
             iconBackground={colors.backgroundSecondary}
             label="Log out"
             description="Sign out of this device"
-            onPress={() => setIsLogoutVisible(true)}
+            onPress={confirmLogout}
             destructive
             isLast
           />
@@ -335,88 +344,6 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Logout confirmation */}
-      <Modal
-        visible={isLogoutVisible}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setIsLogoutVisible(false)}
-      >
-        <View style={styles.backdrop}>
-          <View style={[styles.dialog, { backgroundColor: colors.card }]}>
-            <View style={[styles.dialogIcon, { backgroundColor: colors.error + '1A' }]}>
-              <Ionicons name="log-out-outline" size={26} color={colors.error} />
-            </View>
-
-            <Text style={[styles.dialogTitle, { color: colors.text }]}>Log out?</Text>
-            <Text style={[styles.dialogMessage, { color: colors.textSecondary }]}>
-              You will need to sign in again to review hostels and manage submissions on this device.
-            </Text>
-
-            <View style={[styles.dialogAccount, { backgroundColor: colors.backgroundSecondary }]}>
-              <View style={[styles.dialogAvatar, { backgroundColor: colors.primary }]}>
-                <Text style={styles.dialogAvatarText}>{initials}</Text>
-              </View>
-              <View style={styles.dialogAccountText}>
-                <Text style={[styles.dialogAccountName, { color: colors.text }]} numberOfLines={1}>
-                  {user?.name || 'Team Member'}
-                </Text>
-                <Text style={[styles.dialogAccountEmail, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {user?.email || 'Not signed in'}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={[styles.dialogPrimary, { backgroundColor: colors.error }]}
-              onPress={handleLogout}
-            >
-              <Ionicons name="log-out-outline" size={17} color="#FFFFFF" />
-              <Text style={styles.dialogPrimaryText}>Log out</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.dialogSecondary, { borderColor: colors.border }]}
-              onPress={() => setIsLogoutVisible(false)}
-            >
-              <Text style={[styles.dialogSecondaryText, { color: colors.text }]}>Stay signed in</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Notification permission notice */}
-      <Modal
-        visible={notice !== null}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setNotice(null)}
-      >
-        <View style={styles.backdrop}>
-          <View style={[styles.dialog, { backgroundColor: colors.card }]}>
-            <View style={[styles.dialogIcon, { backgroundColor: colors.accent + '1A' }]}>
-              <Ionicons name="notifications-off-outline" size={26} color={colors.accent} />
-            </View>
-
-            <Text style={[styles.dialogTitle, { color: colors.text }]}>{notice?.title}</Text>
-            <Text style={[styles.dialogMessage, { color: colors.textSecondary }]}>
-              {notice?.message}
-            </Text>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={[styles.dialogPrimary, { backgroundColor: colors.primary }]}
-              onPress={() => setNotice(null)}
-            >
-              <Text style={styles.dialogPrimaryText}>Got it</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -560,103 +487,5 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 11,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
-  },
-  dialog: {
-    width: '100%',
-    maxWidth: 380,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  dialogIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  dialogTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  dialogMessage: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  dialogAccount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 20,
-  },
-  dialogAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dialogAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  dialogAccountText: {
-    flex: 1,
-    gap: 1,
-  },
-  dialogAccountName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  dialogAccountEmail: {
-    fontSize: 12,
-  },
-  dialogPrimary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 14,
-  },
-  dialogPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  dialogSecondary: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    paddingVertical: 13,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 10,
-  },
-  dialogSecondaryText: {
-    fontSize: 15,
-    fontWeight: '600',
   },
 });

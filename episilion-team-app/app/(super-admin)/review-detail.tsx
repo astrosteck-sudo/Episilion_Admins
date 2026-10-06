@@ -7,15 +7,14 @@ import {
   ScrollView,
   Image,
   Linking,
-  Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../src/store/themeStore';
 import { getHostel, approveHostel, rejectHostel, type HostelDetailResponse } from '../../src/api/hostels';
+import { useAppAlert } from '../../src/components/AppAlert';
 
 const PLACEHOLDER_IMAGE = require('../../assets/episilion_logo.png');
 
@@ -122,6 +121,7 @@ function toReviewDetail(data: HostelDetailResponse): ReviewDetail {
 export default function ReviewDetailScreen() {
   const colors = useThemeStore((state) => state.colors);
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const { alert, prompt } = useAppAlert();
   const [review, setReview] = useState<ReviewDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -157,13 +157,13 @@ export default function ReviewDetailScreen() {
   const openInMaps = () => {
     if (!review) return;
     const url = `https://www.google.com/maps/search/?api=1&query=${review.latitude},${review.longitude}`;
-    Linking.openURL(url).catch(() => Alert.alert('Error', 'Unable to open Google Maps.'));
+    Linking.openURL(url).catch(() => alert('Error', 'Unable to open Google Maps.'));
   };
 
   const callNumber = (number: string) => {
     if (!number) return;
     Linking.openURL(`tel:${number.replace(/\s/g, '')}`).catch(() =>
-      Alert.alert('Error', 'Unable to place call.')
+      alert('Error', 'Unable to place call.')
     );
   };
 
@@ -176,7 +176,7 @@ export default function ReviewDetailScreen() {
       } else {
         await rejectHostel(review.id, reason as string);
       }
-      Alert.alert(
+      alert(
         decision === 'approve' ? 'Approved & Published' : 'Hostel Rejected',
         decision === 'approve'
           ? `"${review.name}" is now live on the public listing.`
@@ -184,7 +184,7 @@ export default function ReviewDetailScreen() {
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (err: any) {
-      Alert.alert(
+      alert(
         'Action failed',
         err?.response?.data?.message || err?.message || 'Please try again.'
       );
@@ -195,7 +195,7 @@ export default function ReviewDetailScreen() {
 
   const handleApprove = () => {
     if (!review) return;
-    Alert.alert('Approve & Publish', `Publish "${review.name}" to the public listing?`, [
+    alert('Approve & Publish', `Publish "${review.name}" to the public listing?`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Approve', onPress: () => runDecision('approve') },
     ]);
@@ -203,26 +203,20 @@ export default function ReviewDetailScreen() {
 
   const handleReject = () => {
     if (!review) return;
-    if (Platform.OS === 'ios' && typeof Alert.prompt === 'function') {
-      Alert.prompt(
-        'Reject Hostel',
-        `Why is "${review.name}" being rejected?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Reject',
-            style: 'destructive',
-            onPress: (reason?: string) => runDecision('reject', reason?.trim() || 'Rejected by super admin'),
-          },
-        ],
-        'plain-text'
-      );
-      return;
-    }
-    Alert.alert('Reject Hostel', `Reject "${review.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reject', style: 'destructive', onPress: () => runDecision('reject', 'Rejected by super admin') },
-    ]);
+    prompt(
+      'Reject Hostel',
+      `Why is "${review.name}" being rejected?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: (reason?: string) =>
+            runDecision('reject', reason?.trim() || 'Rejected by super admin'),
+        },
+      ],
+      'e.g. Photos are too dark to verify'
+    );
   };
 
   if (isLoading) {

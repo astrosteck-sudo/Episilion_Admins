@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,12 +17,14 @@ import { Input } from '../../src/components/Input';
 import { Button } from '../../src/components/Button';
 import { Checkbox } from '../../src/components/Checkbox';
 import { loginRequest } from '../../src/api/auth';
+import { useAppAlert } from '../../src/components/AppAlert';
 
 export default function LoginScreen() {
   const colors = useThemeStore((state) => state.colors);
   const colorScheme = useThemeStore((state) => state.colorScheme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const setAuth = useAuthStore((state) => state.setAuth);
+  const { alert } = useAppAlert();
 
   // The WebView will automatically update when latitude/longitude change since we're using them in the source
   const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
@@ -137,7 +138,7 @@ export default function LoginScreen() {
             title={isLoading ? 'Signing In...' : 'Sign In'}
             onPress={async () => {
               if (!email.trim() || !password) {
-                Alert.alert('Validation Error', 'Please enter both email and password');
+                alert('Validation Error', 'Please enter both email and password');
                 return;
               }
 
@@ -175,7 +176,7 @@ export default function LoginScreen() {
                   errorMessage = error.message;
                 }
                 
-                Alert.alert('Login Error', errorMessage);
+                alert('Login Error', errorMessage);
               } finally {
                 setIsLoading(false);
               }

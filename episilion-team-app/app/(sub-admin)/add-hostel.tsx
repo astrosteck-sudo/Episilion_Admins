@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   Image,
-  Alert,
   PermissionsAndroid,
   Platform,
 } from "react-native";
@@ -20,9 +19,11 @@ import { router } from "expo-router";
 import { Input } from "../../src/components/Input";
 import { Button } from "../../src/components/Button";
 import { createHostel } from "../../src/api/hostels";
+import { useAppAlert } from "../../src/components/AppAlert";
 
 export default function AddHostelScreen() {
   const colors = useThemeStore((state) => state.colors);
+  const { alert } = useAppAlert();
   const [sectionsCompleted, setSectionsCompleted] = useState(0);
   const [hostelName, setHostelName] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -44,7 +45,7 @@ export default function AddHostelScreen() {
   const takePhoto = async () => {
     let { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Denied", "Camera permission is required to take photos.");
+      alert("Permission Denied", "Camera permission is required to take photos.");
       return;
     }
 
@@ -63,7 +64,7 @@ export default function AddHostelScreen() {
   const pickImage = async () => {
     let { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Denied", "Media library permission is required to select photos.");
+      alert("Permission Denied", "Media library permission is required to select photos.");
       return;
     }
 
@@ -103,12 +104,12 @@ export default function AddHostelScreen() {
       
       let { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
       if (cameraStatus !== "granted") {
-        Alert.alert("Permission Denied", "Camera permission is required to take photos.");
+        alert("Permission Denied", "Camera permission is required to take photos.");
       }
       
       let { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (mediaLibraryStatus !== "granted") {
-        Alert.alert("Permission Denied", "Media library permission is required to select photos.");
+        alert("Permission Denied", "Media library permission is required to select photos.");
       }
     })();
   }, []);
@@ -148,7 +149,7 @@ export default function AddHostelScreen() {
     if (!photo) missing.push("A property photo");
 
     if (missing.length) {
-      Alert.alert("Incomplete form", `Please complete:\n• ${missing.join("\n• ")}`);
+      alert("Incomplete form", `Please complete:\n• ${missing.join("\n• ")}`);
       return;
     }
 
@@ -167,7 +168,7 @@ export default function AddHostelScreen() {
         photoUri: photo as string,
       });
 
-      Alert.alert(
+      alert(
         "Submitted for approval",
         `"${result?.hostel?.name ?? hostelName}" has been sent to the super admin for review.`,
         [{ text: "OK", onPress: () => router.replace("/(sub-admin)") }],
@@ -190,7 +191,7 @@ export default function AddHostelScreen() {
         error?.response?.data?.message ||
         error?.message ||
         "Could not submit the hostel. Please try again.";
-      Alert.alert("Submission failed", message);
+      alert("Submission failed", message);
     } finally {
       setIsSubmitting(false);
     }
@@ -270,7 +271,7 @@ export default function AddHostelScreen() {
                 await Location.requestForegroundPermissionsAsync();
               if (status !== "granted") {
                 setLocationError("Permission to access location was denied");
-                Alert.alert(
+                alert(
                   "Permission Denied",
                   "Unable to access location. Please enable location permissions in settings.",
                 );
@@ -285,7 +286,7 @@ export default function AddHostelScreen() {
                 setShowMap(true);
               } catch (error) {
                 setLocationError("Failed to get current location");
-                Alert.alert(
+                alert(
                   "Location Error",
                   "Could not retrieve current location. Please try again.",
                 );
@@ -463,7 +464,7 @@ export default function AddHostelScreen() {
                     borderColor: colors.border,
                   },
                 ]}
-                placeholder="₵ 0.00"
+                placeholder="â‚µ 0.00"
                 placeholderTextColor={colors.placeholder}
                 value={room.price}
                 onChangeText={(text) => {
@@ -473,7 +474,7 @@ export default function AddHostelScreen() {
                 }}
               />
               <TouchableOpacity onPress={() => removeRoomType(index)}>
-                <Text style={styles.deleteIcon}>🗑️</Text>
+                <Text style={styles.deleteIcon}>ðŸ—‘ï¸</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -637,7 +638,7 @@ export default function AddHostelScreen() {
                 style={styles.removePhotoButton}
                 onPress={() => setPhoto(null)}
               >
-                <Text style={styles.removePhotoText}>🗑️</Text>
+                <Text style={styles.removePhotoText}>ðŸ—‘ï¸</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -652,7 +653,7 @@ export default function AddHostelScreen() {
                 ]}
                 onPress={takePhoto}
               >
-                <Text style={styles.photoUploadIcon}>📷</Text>
+                <Text style={styles.photoUploadIcon}>ðŸ“·</Text>
                 <Text style={[styles.photoUploadText, { color: colors.text }]}>
                   Take Photo
                 </Text>
@@ -667,7 +668,7 @@ export default function AddHostelScreen() {
                 ]}
                 onPress={pickImage}
               >
-                <Text style={styles.photoUploadIcon}>🖼️</Text>
+                <Text style={styles.photoUploadIcon}>ðŸ–¼ï¸</Text>
                 <Text style={[styles.photoUploadText, { color: colors.text }]}>
                   Gallery
                 </Text>
