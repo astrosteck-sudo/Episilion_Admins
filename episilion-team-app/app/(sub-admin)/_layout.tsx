@@ -28,6 +28,14 @@ export default function SubAdminLayout() {
         }} 
       />
       <Tabs.Screen 
+        name="submissions" 
+        options={{ 
+          title: 'My Submissions',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} />,
+        }} 
+      />
+      <Tabs.Screen 
         name="settings" 
         options={{ 
           title: 'Settings',

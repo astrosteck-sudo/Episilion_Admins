@@ -7,6 +7,8 @@ interface ThemeState {
   colorScheme: ColorScheme;
   colors: ColorPalette;
   systemColorScheme: 'light' | 'dark' | null;
+  /** True when no manual preference is saved, so the device theme is followed. */
+  followSystem: boolean;
   setColorScheme: (scheme: ColorScheme) => void;
   toggleTheme: () => void;
   resetToSystemTheme: () => void;
@@ -18,11 +20,13 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   colorScheme: 'light',
   colors: Colors.light,
   systemColorScheme: null as 'light' | 'dark' | null,
+  followSystem: true,
   
   setColorScheme: (scheme) => {
     set({ 
       colorScheme: scheme, 
-      colors: Colors[scheme] 
+      colors: Colors[scheme],
+      followSystem: false,
     });
     SecureStore.setItemAsync(STORAGE_KEYS.THEME, scheme);
   },
@@ -39,7 +43,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     const finalScheme: ColorScheme = systemScheme === 'dark' ? 'dark' : 'light';
     set({ 
       colorScheme: finalScheme, 
-      colors: Colors[finalScheme] 
+      colors: Colors[finalScheme],
+      followSystem: true,
     });
   },
   
@@ -49,7 +54,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     if (savedScheme === 'light' || savedScheme === 'dark') {
       set({ 
         colorScheme: savedScheme, 
-        colors: Colors[savedScheme] 
+        colors: Colors[savedScheme],
+        followSystem: false,
       });
     } else {
       // If no saved preference, use system scheme or default to light
@@ -57,7 +63,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       const initialScheme: ColorScheme = systemScheme === 'dark' ? 'dark' : 'light';
       set({ 
         colorScheme: initialScheme, 
-        colors: Colors[initialScheme] 
+        colors: Colors[initialScheme],
+        followSystem: true,
       });
     }
   },

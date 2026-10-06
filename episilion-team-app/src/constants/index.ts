@@ -7,4 +7,5 @@ export const STORAGE_KEYS = {
   USER_ROLE: 'userRole',
   USER_DATA: 'userData',
   THEME: 'theme',
+  NOTIFICATIONS: 'notificationsEnabled',
 } as const;

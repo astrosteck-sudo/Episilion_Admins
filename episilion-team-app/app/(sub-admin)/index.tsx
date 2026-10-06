@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,73 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '../../src/store/themeStore';
-import { router } from 'expo-router';
+import { useAuthStore } from '../../src/store/authStore';
+import { router, useFocusEffect } from 'expo-router';
+import { getHostelStats, listHostels, type HostelStats, type HostelListItem, type HostelStatus } from '../../src/api/hostels';
+
+const STATUS_COLOR_KEY: Record<HostelStatus, 'success' | 'accent' | 'error'> = {
+  approved: 'success',
+  pending: 'accent',
+  rejected: 'error',
+};
+
+const STATUS_LABEL: Record<HostelStatus, string> = {
+  approved: 'Approved',
+  pending: 'Awaiting verification',
+  rejected: 'Rejected',
+};
+
+/** "2 hours ago" style label from an ISO timestamp. */
+const timeAgo = (iso: string) => {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+};
 
 export default function SubAdminHomeScreen() {
   const colors = useThemeStore((state) => state.colors);
+  const user = useAuthStore((state) => state.user);
+  const [stats, setStats] = useState<HostelStats | null>(null);
+  const [recent, setRecent] = useState<HostelListItem[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        try {
+          const [counters, submissions] = await Promise.all([
+            getHostelStats(),
+            listHostels('all'),
+          ]);
+          if (!active) return;
+          setStats(counters);
+          setRecent(submissions.slice(0, 4));
+        } catch {
+          if (!active) return;
+          setStats({ pending: 0, approved: 0, rejected: 0, total: 0 });
+          setRecent([]);
+        } finally {
+          if (active) setIsLoadingStats(false);
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  const statValue = (value: number | undefined) =>
+    isLoadingStats ? '—' : String(value ?? 0);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -28,7 +88,7 @@ export default function SubAdminHomeScreen() {
             <View>
               <Text style={[styles.greeting, { color: colors.text }]}>Welcome Back</Text>
               <Text style={[styles.userName, { color: colors.textSecondary }]}>
-                Sub Admin
+                {user?.name || 'Sub Admin'}
               </Text>
             </View>
           </View>
@@ -89,45 +149,86 @@ export default function SubAdminHomeScreen() {
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statNumber, { color: colors.primary }]}>12</Text>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push('/(sub-admin)/submissions')}
+          >
+            <Text style={[styles.statNumber, { color: colors.primary }]}>
+              {statValue(stats?.total)}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Hostels</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statNumber, { color: colors.success }]}>8</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push('/(sub-admin)/submissions')}
+          >
+            <Text style={[styles.statNumber, { color: colors.success }]}>
+              {statValue(stats?.approved)}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.statNumber, { color: colors.warning }]}>4</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => router.push('/(sub-admin)/submissions')}
+          >
+            <Text style={[styles.statNumber, { color: colors.warning }]}>
+              {statValue(stats?.pending)}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pending</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Recent Activity */}
         <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
-          <View style={[styles.activityItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.activityDot, { backgroundColor: colors.success }]} />
-            <View style={styles.activityContent}>
-              <Text style={[styles.activityTitle, { color: colors.text }]}>
-                Hall A - Room 202
-              </Text>
-              <Text style={[styles.activityTime, { color: colors.textSecondary }]}>
-                2 hours ago
-              </Text>
-            </View>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
+            {recent.length > 0 && (
+              <TouchableOpacity onPress={() => router.push('/(sub-admin)/submissions')}>
+                <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <View style={[styles.activityItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.activityDot, { backgroundColor: colors.primary }]} />
-            <View style={styles.activityContent}>
-              <Text style={[styles.activityTitle, { color: colors.text }]}>
-                Hall B - Room 105
-              </Text>
-              <Text style={[styles.activityTime, { color: colors.textSecondary }]}>
-                5 hours ago
-              </Text>
+
+          {isLoadingStats ? (
+            <View style={styles.activityEmpty}>
+              <ActivityIndicator color={colors.primary} />
             </View>
-          </View>
+          ) : recent.length === 0 ? (
+            <View style={[styles.activityItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.activityDot, { backgroundColor: colors.textTertiary }]} />
+              <View style={styles.activityContent}>
+                <Text style={[styles.activityTitle, { color: colors.textSecondary }]}>
+                  No submissions yet
+                </Text>
+                <Text style={[styles.activityTime, { color: colors.textSecondary }]}>
+                  Add a hostel to see it here
+                </Text>
+              </View>
+            </View>
+          ) : (
+            recent.map((hostel) => (
+              <TouchableOpacity
+                key={hostel.hostel_id}
+                style={[styles.activityItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => router.push('/(sub-admin)/submissions')}
+              >
+                <View
+                  style={[
+                    styles.activityDot,
+                    { backgroundColor: colors[STATUS_COLOR_KEY[hostel.status]] },
+                  ]}
+                />
+                <View style={styles.activityContent}>
+                  <Text style={[styles.activityTitle, { color: colors.text }]} numberOfLines={1}>
+                    {hostel.name}
+                  </Text>
+                  <Text style={[styles.activityTime, { color: colors.textSecondary }]}>
+                    {STATUS_LABEL[hostel.status]} • {timeAgo(hostel.created_at)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -287,14 +388,28 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
+    textAlign: 'center',
   },
   sectionContainer: {
     marginBottom: 24,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  activityEmpty: {
+    paddingVertical: 24,
+    alignItems: 'center',
   },
   activityItem: {
     flexDirection: 'row',
