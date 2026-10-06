@@ -8,14 +8,14 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useThemeStore } from '../../src/store/themeStore';
 import { useAuthStore } from '../../src/store/authStore';
-import { Input } from '../../src/components/Input';
-import { Button } from '../../src/components/Button';
-import { Checkbox } from '../../src/components/Checkbox';
 import { loginRequest } from '../../src/api/auth';
 import { useAppAlert } from '../../src/components/AppAlert';
 
@@ -26,212 +26,154 @@ export default function LoginScreen() {
   const setAuth = useAuthStore((state) => state.setAuth);
   const { alert } = useAppAlert();
 
-  // The WebView will automatically update when latitude/longitude change since we're using them in the source
-  const [userType, setUserType] = useState<'Sub Admin' | 'Super Admin'>('Sub Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberDevice, setRememberDevice] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleSignIn = async () => {
+    if (!email.trim() || !password) {
+      alert('Missing details', 'Please enter both your email and password.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { token, user } = await loginRequest(email.trim().toLowerCase(), password);
+
+      setAuth(
+        { id: user.id.toString(), email: user.email, name: user.full_name },
+        user.role,
+        token,
+      );
+
+      router.replace(user.role === 'super_admin' ? '/(super-admin)' : '/(sub-admin)');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Login failed. Please try again.';
+      alert('Sign in failed', message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          <View style={[styles.logoContainer, { backgroundColor: colors.card }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity
+            onPress={toggleTheme}
+            style={[styles.themeToggle, { backgroundColor: colors.inputBackground }]}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={colorScheme === 'dark' ? 'sunny-outline' : 'moon-outline'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.header}>
             <Image
               source={require('../../assets/episilion_logo.png')}
-              style={styles.logoImage}
+              style={styles.logo}
               resizeMode="contain"
             />
-          </View>
-          <View style={[styles.badge, { backgroundColor: colors.success }]}>
-            <Text style={styles.badgeText}>UPSA FIELD OPERATIONS</Text>
-          </View>
-        </View>
-
-        {/* Title Section */}
-        <View style={styles.titleSection}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: colors.text }]}>Sign In to Team Portal</Text>
-            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
-              <Text style={styles.themeIcon}>{colorScheme === 'dark' ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Field Operations & Hostel Management
-          </Text>
-        </View>
-
-        {/* User Type Toggle */}
-        <View style={[styles.toggleContainer, { backgroundColor: colors.inputBackground }]}>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              userType === 'Sub Admin' && { backgroundColor: colors.success },
-            ]}
-            onPress={() => setUserType('Sub Admin')}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                { color: userType === 'Sub Admin' ? '#FFFFFF' : colors.textSecondary },
-              ]}
-            >
-              Sub Admin
+            <Text style={[styles.title, { color: colors.text }]}>Episilion Admins</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Sign in to continue
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              userType === 'Super Admin' && { backgroundColor: colors.success },
-            ]}
-            onPress={() => setUserType('Super Admin')}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                { color: userType === 'Super Admin' ? '#FFFFFF' : colors.textSecondary },
-              ]}
-            >
-              Super Admin
-            </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
 
-        {/* Form Fields */}
-        <View style={styles.formSection}>
-          <Input
-            label="Email Address"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-          />
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="mail-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="you@episilion.com"
+                  placeholderTextColor={colors.placeholder}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                />
+              </View>
+            </View>
 
-          <View style={styles.passwordContainer}>
-            <Input
-              label="Password"
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity style={styles.forgotContainer}>
-              <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot Password?</Text>
-            </TouchableOpacity>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Password</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  { backgroundColor: colors.inputBackground, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="Enter your password"
+                  placeholderTextColor={colors.placeholder}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="go"
+                  onSubmitEditing={handleSignIn}
+                />
+                <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)} hitSlop={8}>
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
+              activeOpacity={0.85}
+              disabled={isLoading}
+              onPress={handleSignIn}
+              style={[
+                styles.signInButton,
+                { backgroundColor: colors.primary, opacity: isLoading ? 0.7 : 1 },
+              ]}
             >
-              <Text style={[styles.eyeText, { color: colors.textSecondary }]}>
-                {showPassword ? '👁️' : '👁️‍🗨️'}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.signInText}>Sign In</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                </>
+              )}
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Buttons */}
-        <View style={styles.buttonSection}>
-          <Button
-            title={isLoading ? 'Signing In...' : 'Sign In'}
-            onPress={async () => {
-              if (!email.trim() || !password) {
-                alert('Validation Error', 'Please enter both email and password');
-                return;
-              }
-
-              setIsLoading(true);
-              try {
-                const response = await loginRequest(email.trim().toLowerCase(), password);
-                
-                // Extract user data from response
-                const { token, user } = response;
-                
-                // Set authentication in store
-                setAuth(
-                  { 
-                    id: user.id.toString(), 
-                    email: user.email, 
-                    name: user.full_name 
-                  },
-                  user.role,
-                  token
-                );
-                
-                // Navigate based on user role
-                if (user.role === 'super_admin') {
-                  router.replace('/(super-admin)');
-                } else {
-                  router.replace('/(sub-admin)');
-                }
-              } catch (error: any) {
-                console.error('Login error:', error);
-                let errorMessage = 'Login failed. Please try again.';
-                
-                if (error.response?.data?.message) {
-                  errorMessage = error.response.data.message;
-                } else if (error.message) {
-                  errorMessage = error.message;
-                }
-                
-                alert('Login Error', errorMessage);
-              } finally {
-                setIsLoading(false);
-              }
-            }}
-            loading={isLoading}
-            icon={!isLoading && <Text style={styles.arrowIcon}>→</Text>}
-          />
-        </View>
-
-        {/* Provisioned Device Access */}
-        {/* <View style={[styles.infoSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.infoHeader}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
-            <Text style={[styles.infoTitle, { color: colors.text }]}>
-              Provisioned Device Access
-            </Text>
-          </View>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            Officer accounts are managed directly by Super Admin
+          <Text style={[styles.footer, { color: colors.textTertiary }]}>
+            Accounts are issued by your Super Admin
           </Text>
-          <Text style={[styles.infoEmail, { color: colors.primary }]}>
-            admin@episilion.com.gh
-          </Text>
-          <Text style={[styles.infoSubtext, { color: colors.textSecondary }]}>
-            for credential resets or IMEI authorization
-          </Text>
-        </View> */}
-
-        {/* Credential Presets */}
-        <View style={styles.presetsSection}>
-          <Text style={[styles.presetsTitle, { color: colors.textSecondary }]}>
-            FAST FIELD CREDENTIAL PRESETS
-          </Text>
-          <View style={styles.presetItem}>
-            <View style={[styles.presetDot, { backgroundColor: colors.success }]} />
-            <Text style={[styles.presetText, { color: colors.text }]}>
-              Sub-Admin (Field Collector)
-            </Text>
-          </View>
-          <View style={styles.presetItem}>
-            <View style={[styles.presetDot, { backgroundColor: colors.accent }]} />
-            <Text style={[styles.presetText, { color: colors.text }]}>
-              Super Admin (Operations Lead)
-            </Text>
-          </View>
-        </View>
-
-        {/* Location */}
-        <View style={[styles.locationSection, { borderTopColor: colors.divider }]}>
-          <Text style={styles.locationIcon}>📍</Text>
-          <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-            Madina / UPSA Operational Cluster
-          </Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -240,175 +182,85 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  flex: {
+    flex: 1,
+  },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  logoImage: {
-    width: 60,
-    height: 60,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  titleSection: {
-    marginBottom: 24,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
+    paddingHorizontal: 28,
+    paddingVertical: 40,
   },
   themeToggle: {
-    padding: 8,
+    position: 'absolute',
+    top: 8,
+    right: 28,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  themeIcon: {
-    fontSize: 24,
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 14,
+    marginTop: 6,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 24,
+  form: {
+    gap: 18,
   },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
+  field: {
+    gap: 8,
   },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  formSection: {
-    marginBottom: 24,
-  },
-  passwordContainer: {
-    position: 'relative',
-  },
-  forgotContainer: {
-    position: 'absolute',
-    right: 40,
-    top: 0,
-  },
-  forgotText: {
+  label: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    marginLeft: 2,
   },
-  eyeIcon: {
-    position: 'absolute',
-    right: 12,
-    top: 30,
-  },
-  eyeText: {
-    fontSize: 18,
-  },
-  buttonSection: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  arrowIcon: {
-    fontSize: 18,
-    color: '#FFFFFF',
-  },
-  fingerprintIcon: {
-    fontSize: 18,
-  },
-  infoSection: {
-    padding: 16,
-    borderRadius: 12,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 54,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 24,
+    paddingHorizontal: 16,
   },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+  input: {
+    flex: 1,
+    fontSize: 15,
   },
-  infoIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  infoText: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  infoEmail: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  infoSubtext: {
-    fontSize: 12,
-  },
-  presetsSection: {
-    marginBottom: 24,
-  },
-  presetsTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
-  presetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  presetDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 12,
-  },
-  presetText: {
-    fontSize: 13,
-  },
-  locationSection: {
+  signInButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
+    gap: 8,
+    height: 54,
+    borderRadius: 14,
+    marginTop: 6,
   },
-  locationIcon: {
-    fontSize: 14,
-    marginRight: 6,
+  signInText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  locationText: {
+  footer: {
     fontSize: 12,
+    textAlign: 'center',
+    marginTop: 32,
   },
 });
