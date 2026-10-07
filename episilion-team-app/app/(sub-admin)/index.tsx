@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../src/store/themeStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { router, useFocusEffect } from 'expo-router';
@@ -74,104 +74,155 @@ export default function SubAdminHomeScreen() {
   const statValue = (value: number | undefined) =>
     isLoadingStats ? '—' : String(value ?? 0);
 
+  const initials = (user?.name || 'SA')
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image
-              source={require('../../assets/episilion_logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <View>
-              <Text style={[styles.greeting, { color: colors.text }]}>Welcome Back</Text>
-              <Text style={[styles.userName, { color: colors.textSecondary }]}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+            <View style={styles.headerText}>
+              <Text style={[styles.greeting, { color: colors.textSecondary }]}>
+                Welcome back
+              </Text>
+              <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
                 {user?.name || 'Sub Admin'}
               </Text>
             </View>
+          </View>
+          <View style={[styles.rolePill, { backgroundColor: colors.backgroundSecondary }]}>
+            <Ionicons name="person" size={11} color={colors.primary} />
+            <Text style={[styles.rolePillText, { color: colors.primary }]}>Sub Admin</Text>
           </View>
         </View>
 
         {/* Main Actions */}
         <View style={styles.actionsContainer}>
-          {/* Add New Hostel Card */}
+          {/* Add New Hostel */}
           <TouchableOpacity
-            style={styles.addHostelCard}
+            activeOpacity={0.9}
+            style={[
+              styles.actionCard,
+              styles.addCard,
+              {
+                backgroundColor: colors.primary,
+                shadowColor: colors.primary,
+              },
+            ]}
             onPress={() => router.push('/(sub-admin)/add-hostel')}
           >
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIconContainer}>
-                <Text style={styles.cardIcon}>+</Text>
+            <View style={styles.actionTop}>
+              <View style={styles.actionIconOnFill}>
+                <Ionicons name="add" size={26} color="#FFFFFF" />
               </View>
-              <TouchableOpacity style={styles.cardArrowButton}>
-                <Text style={styles.arrow}>→</Text>
-              </TouchableOpacity>
+              <View style={styles.actionChevronOnFill}>
+                <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+              </View>
             </View>
-            <Text style={styles.addHostelTitle}>Add New Hostel</Text>
-            <Text style={styles.addHostelDescription}>
-              Visit a hostel not yet listed and submit its details, room pricing and verified photos for catalog approval.
+
+            <Text style={styles.actionTitleOnFill}>Add New Hostel</Text>
+            <Text style={styles.actionDescriptionOnFill}>
+              Visit a hostel that isn't listed yet and submit its details, room pricing
+              and verified photos for review.
             </Text>
-            <View style={styles.cardFooter}>
-              <View style={styles.tagContainer}>
-                <Text style={styles.checkIcon}>✓</Text>
-                <Text style={styles.tagText}>REQUIRES SUPER ADMIN REVIEW</Text>
-              </View>
+
+            <View style={styles.actionTagOnFill}>
+              <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
+              <Text style={styles.actionTagTextOnFill}>REQUIRES SUPER ADMIN REVIEW</Text>
             </View>
           </TouchableOpacity>
 
-          {/* Update Existing Hostel Card */}
+          {/* Update Existing Hostel */}
           <TouchableOpacity
-            style={[styles.updateHostelCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            activeOpacity={0.9}
+            style={[
+              styles.actionCard,
+              {
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: '#000',
+              },
+            ]}
             onPress={() => router.push('/(sub-admin)/update-hostel')}
           >
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: '#E8F5E9' }]}>
-                <Text style={[styles.cardIcon, { color: '#4CAF50' }]}>✎</Text>
+            <View style={styles.actionTop}>
+              <View
+                style={[
+                  styles.actionIconTinted,
+                  { backgroundColor: colors.secondary + '1A' },
+                ]}
+              >
+                <Ionicons name="create-outline" size={24} color={colors.secondary} />
               </View>
-              <TouchableOpacity style={[styles.cardArrowButton, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={[styles.arrow, { color: '#7B1FA2' }]}>→</Text>
-              </TouchableOpacity>
+              <View style={[styles.actionChevron, { backgroundColor: colors.backgroundSecondary }]}>
+                <Ionicons name="arrow-forward" size={18} color={colors.secondary} />
+              </View>
             </View>
-            <Text style={[styles.updateHostelTitle, { color: colors.text }]}>Update Existing Hostel</Text>
-            <Text style={[styles.updateHostelDescription, { color: colors.textSecondary }]}>
-              Request temporary field permission to modify rates, vacancy, or amenities for an active hostel listing.
+
+            <Text style={[styles.actionTitle, { color: colors.text }]}>
+              Update Existing Hostel
             </Text>
-            <View style={styles.cardFooter}>
-              <View style={[styles.tagContainer, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={[styles.lockIcon, { color: '#7B1FA2' }]}>🔒</Text>
-                <Text style={[styles.tagText, { color: '#7B1FA2' }]}>REQUEST ACCESS</Text>
-              </View>
+            <Text style={[styles.actionDescription, { color: colors.textSecondary }]}>
+              Request temporary field access to correct rates, vacancy or perks on an
+              active hostel listing.
+            </Text>
+
+            <View style={[styles.actionTag, { backgroundColor: colors.backgroundSecondary }]}>
+              <Ionicons name="lock-closed" size={12} color={colors.secondary} />
+              <Text style={[styles.actionTagText, { color: colors.secondary }]}>
+                REQUEST ACCESS
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Quick Stats */}
-        <View style={styles.statsContainer}>
+        <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.statItem}
+            activeOpacity={0.7}
             onPress={() => router.push('/(sub-admin)/submissions')}
           >
-            <Text style={[styles.statNumber, { color: colors.primary }]}>
+            <Ionicons name="layers-outline" size={18} color={colors.primary} />
+            <Text style={[styles.statNumber, { color: colors.text }]}>
               {statValue(stats?.total)}
             </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Hostels</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total</Text>
           </TouchableOpacity>
+
+          <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
+
           <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.statItem}
+            activeOpacity={0.7}
             onPress={() => router.push('/(sub-admin)/submissions')}
           >
-            <Text style={[styles.statNumber, { color: colors.success }]}>
+            <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
+            <Text style={[styles.statNumber, { color: colors.text }]}>
               {statValue(stats?.approved)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active</Text>
           </TouchableOpacity>
+
+          <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
+
           <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={styles.statItem}
+            activeOpacity={0.7}
             onPress={() => router.push('/(sub-admin)/submissions')}
           >
-            <Text style={[styles.statNumber, { color: colors.warning }]}>
+            <Ionicons name="time-outline" size={18} color={colors.accent} />
+            <Text style={[styles.statNumber, { color: colors.text }]}>
               {statValue(stats?.pending)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pending</Text>
@@ -243,153 +294,190 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+
+  /* Header */
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 32,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  logo: {
-    width: 50,
-    height: 50,
+  headerText: {
+    flex: 1,
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   greeting: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 12,
   },
   userName: {
-    fontSize: 14,
+    fontSize: 19,
+    fontWeight: '700',
+    marginTop: 1,
   },
-  actionsContainer: {
-    gap: 16,
-    marginBottom: 32,
-  },
-  addHostelCard: {
-    borderRadius: 16,
-    padding: 20,
-    backgroundColor: '#4CAF50',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  updateHostelCard: {
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
+  rolePill: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardIcon: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: '300',
-  },
-  cardArrowButton: {
-    width: 40,
-    height: 40,
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  arrow: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  addHostelTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  addHostelDescription: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  updateHostelTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  updateHostelDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  checkIcon: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  lockIcon: {
-    fontSize: 14,
-  },
-  tagText: {
+  rolePillText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+
+  /* Action cards */
+  actionsContainer: {
+    gap: 14,
+    marginBottom: 24,
+  },
+  actionCard: {
+    borderRadius: 20,
+    padding: 20,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  addCard: {
+    shadowOpacity: 0.28,
+  },
+  actionTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  actionIconOnFill: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  actionChevronOnFill: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  actionIconTinted: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionChevron: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionTitleOnFill: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 7,
+  },
+  actionDescriptionOnFill: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: 'rgba(255,255,255,0.92)',
+    marginBottom: 16,
+  },
+  actionTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    marginBottom: 7,
+  },
+  actionDescription: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  actionTagOnFill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  actionTagTextOnFill: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
     color: '#FFFFFF',
   },
-  statsContainer: {
+  actionTag: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 32,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  actionTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+
+  /* Quick stats */
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 16,
+    marginBottom: 28,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 34,
   },
   statNumber: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
   },
+
+  /* Recent activity */
   sectionContainer: {
     marginBottom: 24,
   },
@@ -397,11 +485,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
   seeAllText: {
     fontSize: 13,
@@ -414,14 +502,14 @@ const styles = StyleSheet.create({
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 15,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   activityDot: {
-    width: 10,
-    height: 10,
+    width: 9,
+    height: 9,
     borderRadius: 5,
     marginRight: 12,
   },
@@ -430,11 +518,10 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 2,
   },
   activityTime: {
     fontSize: 12,
   },
 });
-

@@ -97,6 +97,12 @@ export default function AddHostelScreen() {
     "Fan",
   ];
 
+  /**
+   * Order matters: the first few perks are promoted to the hostel card, so the
+   * most appealing ones come first.
+   */
+  const CARD_PERK_COUNT = 3;
+
   /** Phone numbers must be exactly 10 digits. */
   const PHONE_LENGTH = 10;
 
@@ -191,7 +197,7 @@ export default function AddHostelScreen() {
         latitude: latitude.trim(),
         longitude: longitude.trim(),
         roomTypes: roomTypes.filter((r) => r.type.trim()),
-        amenities: selectedAmenities,
+        perks: selectedAmenities,
         allowInstallments,
         managerName: managerName.trim(),
         phone: phoneNumber.trim(),
@@ -558,38 +564,51 @@ export default function AddHostelScreen() {
               <Ionicons name="sparkles-outline" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Facilities & Amenities
+              Hostel Perks & Amenities
             </Text>
           </View>
+          <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
+            Tick everything the hostel offers. The first {CARD_PERK_COUNT} you pick are
+            featured on the hostel card; all of them appear on the details page.
+          </Text>
           <View style={styles.amenitiesGrid}>
-            {amenities.map((amenity) => (
-              <TouchableOpacity
-                key={amenity}
-                style={[
-                  styles.amenityButton,
-                  selectedAmenities.includes(amenity)
-                    ? { backgroundColor: colors.success }
-                    : {
-                        backgroundColor: colors.inputBackground,
-                        borderColor: colors.border,
-                      },
-                ]}
-                onPress={() => toggleAmenity(amenity)}
-              >
-                <Text
+            {amenities.map((amenity) => {
+              const isSelected = selectedAmenities.includes(amenity);
+              const perkIndex = selectedAmenities.indexOf(amenity);
+              const isFeatured = isSelected && perkIndex < CARD_PERK_COUNT;
+
+              return (
+                <TouchableOpacity
+                  key={amenity}
                   style={[
-                    styles.amenityText,
-                    {
-                      color: selectedAmenities.includes(amenity)
-                        ? "#FFFFFF"
-                        : colors.text,
-                    },
+                    styles.amenityButton,
+                    isSelected
+                      ? { backgroundColor: colors.success }
+                      : {
+                          backgroundColor: colors.inputBackground,
+                          borderColor: colors.border,
+                        },
                   ]}
+                  onPress={() => toggleAmenity(amenity)}
                 >
-                  {amenity}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  {isSelected && (
+                    <Ionicons
+                      name={isFeatured ? "star" : "checkmark"}
+                      size={12}
+                      color="#FFFFFF"
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.amenityText,
+                      { color: isSelected ? "#FFFFFF" : colors.text },
+                    ]}
+                  >
+                    {amenity}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
           <TextInput
             style={[
@@ -930,7 +949,15 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  sectionHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 12,
+  },
   amenityButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,

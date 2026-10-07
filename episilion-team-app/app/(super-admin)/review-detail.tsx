@@ -85,6 +85,9 @@ function toReviewDetail(data: HostelDetailResponse): ReviewDetail {
       ? [hostel.main_image]
       : [];
 
+  // Prefer the full perk list; fall back to the card amenities for older records.
+  const perks = furnishing.length ? furnishing : amenities;
+
   const minPrice = rooms.reduce<number | null>(
     (min, room) => (room.price !== null && (min === null || room.price < min) ? room.price : min),
     null
@@ -109,7 +112,7 @@ function toReviewDetail(data: HostelDetailResponse): ReviewDetail {
     capturedAt: timeAgo(hostel.created_at),
     roomTypes,
     amenities,
-    facilities: furnishing,
+    facilities: perks,
     managerName: contact?.manager_name || 'Not provided',
     managerPhone: contact?.phone || '',
     managerWhatsapp: contact?.whatsapp || contact?.phone || '',

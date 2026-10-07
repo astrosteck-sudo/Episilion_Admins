@@ -71,6 +71,54 @@ const parseRoomTypes = (value) => {
     .filter(Boolean);
 };
 
+/**
+ * Standard house rules applied to every hostel when a super admin approves it.
+ * Kept in the backend so sub admins never have to enter them per submission.
+ */
+const DEFAULT_RULES = [
+  'Maintain your room',
+  'No loud music',
+  'No perching',
+  'No permanent fixes, removables only',
+  'No pets',
+  'No smoking, drinking, weapons',
+  'Visiting 6am to 11pm',
+];
+
+/**
+ * How many perks are promoted to `amenities`, which is what the hostel card
+ * shows. `furnishing` always holds the complete list of perks.
+ */
+const CARD_AMENITY_LIMIT = 3;
+
+/**
+ * Splits the selected perks between the two tables:
+ *   - `furnishing` -> every perk (the hostel's full list of features)
+ *   - `amenities`  -> only the first few, used for the short card display
+ */
+const splitPerks = (perks) => ({
+  all: perks,
+  card: perks.slice(0, CARD_AMENITY_LIMIT),
+});
+
+/**
+ * Seeds the default rules for a hostel, skipping any that already exist.
+ * Safe to call more than once thanks to the (hostel_id, rule) unique key.
+ */
+async function seedDefaultRules(conn, hostelId) {
+  if (!DEFAULT_RULES.length) return 0;
+
+  const values = DEFAULT_RULES.map(() => '(?, ?)').join(', ');
+  const params = DEFAULT_RULES.flatMap((rule) => [hostelId, rule]);
+
+  const [result] = await conn.query(
+    `INSERT IGNORE INTO rules (hostel_id, rule) VALUES ${values}`,
+    params
+  );
+
+  return result.affectedRows ?? 0;
+}
+
 /** Builds a unique, url friendly hostel_id (max 50 chars, matches the existing PK). */
 async function generateHostelId(conn, name) {
   const base = slugify(name).slice(0, 40) || 'hostel';
@@ -132,8 +180,8 @@ exports.createHostel = async (req, res) => {
 
     const hostelId = await generateHostelId(conn, name);
     const roomTypes = parseRoomTypes(body.room_types || body.roomTypes);
-    const amenities = parseList(body.amenities);
-    const furnishings = parseList(body.furnishing);
+    // The sub admin picks one list of perks; it is mirrored into both tables.
+    const perks = splitPerks(parseList(body.perks || body.amenities));
     const rules = parseList(body.rules);
 
     await conn.beginTransaction();
@@ -189,11 +237,11 @@ exports.createHostel = async (req, res) => {
       );
     }
 
-    for (const amenity of amenities) {
+    for (const amenity of perks.card) {
       await conn.query('INSERT INTO amenities (hostel_id, amenity) VALUES (?, ?)', [hostelId, amenity]);
     }
 
-    for (const item of furnishings) {
+    for (const item of perks.all) {
       await conn.query('INSERT INTO furnishing (hostel_id, furnishing) VALUES (?, ?)', [hostelId, item]);
     }
 
@@ -409,15 +457,30 @@ async function decide(req, res, action) {
       [action, action === 'rejected' ? reason : null, req.teamUser.id, id]
     );
 
+    // Approving publishes the hostel, so it also receives the standard house rules.
+    let rulesAdded = 0;
+    if (action === 'approved') {
+      rulesAdded = await seedDefaultRules(conn, id);
+    }
+
     await conn.query(
       `INSERT INTO hostel_review_log (hostel_id, action, performed_by, note)
        VALUES (?, ?, ?, ?)`,
-      [id, action, req.teamUser.id, reason]
+      [
+        id,
+        action,
+        req.teamUser.id,
+        rulesAdded > 0 ? `${reason ? `${reason}. ` : ''}Applied ${rulesAdded} default rules` : reason,
+      ]
     );
 
     await conn.commit();
 
-    res.json({ message: `Hostel ${action}`, hostel: { hostel_id: id, status: action } });
+    res.json({
+      message: `Hostel ${action}`,
+      hostel: { hostel_id: id, status: action },
+      defaultRulesApplied: rulesAdded,
+    });
   } catch (err) {
     try {
       await conn.rollback();

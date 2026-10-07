@@ -80,7 +80,8 @@ export interface NewHostelPayload {
   directions?: string;
   distanceToCampus?: string;
   roomTypes: { type: string; price: string }[];
-  amenities: string[];
+  /** The full list of perks. The first few are promoted to `amenities` for the card. */
+  perks: string[];
   allowInstallments?: boolean;
   managerName: string;
   phone: string;
@@ -149,7 +150,7 @@ export async function createHostel(payload: NewHostelPayload) {
   if (payload.officeHours) form.append('office_hours', payload.officeHours);
 
   form.append('room_types', JSON.stringify(payload.roomTypes.filter((r) => r.type)));
-  form.append('amenities', JSON.stringify(payload.amenities));
+  form.append('perks', JSON.stringify(payload.perks));
   form.append('installment_allowed', payload.allowInstallments ? 'true' : 'false');
 
   form.append('photos', {
