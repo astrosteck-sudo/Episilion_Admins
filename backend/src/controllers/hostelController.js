@@ -672,6 +672,122 @@ exports.createUpdateRequest = async (req, res) => {
  * GET /api/team/hostels/update-requests?status=pending|approved|rejected|all
  * super_admin sees every request, sub_admin only their own.
  */
+/** Human labels for the fields a sub admin can change. */
+const FIELD_LABELS = {
+  name: 'Name',
+  type: 'Type',
+  university: 'University',
+  year_established: 'Year established',
+  directions: 'Directions',
+  distance_to_campus_in_minutes: 'Minutes to campus',
+  latitude: 'Latitude',
+  longitude: 'Longitude',
+  manager_name: 'Manager name',
+  phone: 'Phone',
+  whatsapp: 'WhatsApp',
+  email: 'Email',
+  office_hours: 'Office hours',
+  website: 'Website',
+  price_min: 'Price from',
+  price_max: 'Price to',
+  billing_period: 'Billing period',
+  installment_allowed: 'Installment allowed',
+  utilities_fee: 'Utilities fee',
+  maintenance_fee: 'Maintenance fee',
+  caution_deposit: 'Caution deposit',
+  refund_policy: 'Refund policy',
+  rooms: 'Room types',
+  perks: 'Perks',
+  rules: 'House rules',
+};
+
+const displayValue = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  if (Array.isArray(value)) {
+    if (!value.length) return '—';
+    return value
+      .map((item) =>
+        item && typeof item === 'object'
+          ? `${item.type}${item.price !== null && item.price !== undefined ? ` - ${item.price}` : ''}`
+          : String(item)
+      )
+      .join(', ');
+  }
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return String(value);
+};
+
+/**
+ * The live values for the fields a change set can touch, so the super admin can
+ * see exactly what would change rather than just that something changed.
+ */
+async function loadLiveValues(hostelId) {
+  const [[hostelRows], [locations], [contacts], [rooms], [furnishing], [rules], [pricing]] =
+    await Promise.all([
+      db.query(
+        'SELECT name, type, university, year_established FROM hostels WHERE hostel_id = ?',
+        [hostelId]
+      ),
+      db.query('SELECT * FROM locations WHERE hostel_id = ? LIMIT 1', [hostelId]),
+      db.query('SELECT * FROM contact WHERE hostel_id = ? LIMIT 1', [hostelId]),
+      db.query('SELECT room_type, price FROM rooms WHERE hostel_id = ? ORDER BY room_id', [hostelId]),
+      db.query('SELECT furnishing FROM furnishing WHERE hostel_id = ?', [hostelId]),
+      db.query('SELECT rule FROM rules WHERE hostel_id = ?', [hostelId]),
+      db.query('SELECT * FROM pricing WHERE hostel_id = ? LIMIT 1', [hostelId]),
+    ]);
+
+  const hostel = hostelRows[0] || {};
+  const location = locations[0] || {};
+  const contact = contacts[0] || {};
+  const price = pricing[0] || {};
+
+  return {
+    name: hostel.name,
+    type: hostel.type,
+    university: hostel.university,
+    year_established: hostel.year_established,
+    directions: location.directions,
+    distance_to_campus_in_minutes: location.distance_to_campus_in_minutes,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    manager_name: contact.manager_name,
+    phone: contact.phone,
+    whatsapp: contact.whatsapp,
+    email: contact.email,
+    office_hours: contact.office_hours,
+    website: contact.website,
+    price_min: price.price_min,
+    price_max: price.price_max,
+    billing_period: price.billing_period,
+    installment_allowed: price.installment_allowed,
+    utilities_fee: price.utilities_fee,
+    maintenance_fee: price.maintenance_fee,
+    caution_deposit: price.caution_deposit,
+    refund_policy: price.refund_policy,
+    rooms: rooms.map((r) => ({ type: r.room_type, price: r.price })),
+    perks: furnishing.map((f) => f.furnishing),
+    rules: rules.map((r) => r.rule),
+  };
+}
+
+/** Only the fields that actually differ, with their before and after values. */
+function buildDiff(changes, live) {
+  const diff = [];
+  for (const [key, next] of Object.entries(changes)) {
+    const before = live[key];
+    const beforeText = displayValue(before);
+    const afterText = displayValue(next);
+    if (beforeText === afterText) continue;
+    diff.push({
+      field: key,
+      label: FIELD_LABELS[key] || key.replace(/_/g, ' '),
+      before: beforeText,
+      after: afterText,
+    });
+  }
+  return diff;
+}
+
 exports.listUpdateRequests = async (req, res) => {
   try {
     const status = str(req.query.status) || 'pending';
@@ -690,7 +806,7 @@ exports.listUpdateRequests = async (req, res) => {
     const [rows] = await db.query(
       `SELECT
          r.id, r.hostel_id, r.reason, r.status, r.decision_note,
-         r.created_at, r.reviewed_at,
+         r.created_at, r.reviewed_at, r.pending_changes,
          (r.pending_changes IS NOT NULL) AS has_staged_changes,
          h.name AS hostel_name, h.main_image, h.status AS hostel_status,
          u.full_name AS requested_by_name, u.email AS requested_by_email,
@@ -704,12 +820,29 @@ exports.listUpdateRequests = async (req, res) => {
       params
     );
 
-    res.json({
-      requests: rows.map((row) => ({
-        ...row,
-        has_staged_changes: Boolean(row.has_staged_changes),
-      })),
-    });
+    // Resolve the staged edits into a readable before/after list. Only the rows
+    // that actually have changes need the extra queries.
+    const requests = await Promise.all(
+      rows.map(async (row) => {
+        const changes = parseChanges(row.pending_changes);
+        let diff = [];
+        if (changes) {
+          try {
+            diff = buildDiff(changes, await loadLiveValues(row.hostel_id));
+          } catch (err) {
+            console.error('buildDiff error:', err);
+          }
+        }
+        const { pending_changes: _omit, ...rest } = row;
+        return {
+          ...rest,
+          has_staged_changes: Boolean(row.has_staged_changes),
+          staged_diff: diff,
+        };
+      })
+    );
+
+    res.json({ requests });
   } catch (err) {
     console.error('listUpdateRequests error:', err);
     res.status(500).json({ message: 'Failed to load update requests' });

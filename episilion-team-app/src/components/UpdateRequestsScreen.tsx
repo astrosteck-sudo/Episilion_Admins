@@ -349,12 +349,46 @@ export default function UpdateRequestsScreen() {
                     <View style={styles.stagedHeader}>
                       <Ionicons name="create-outline" size={14} color={colors.accent} />
                       <Text style={[styles.stagedTitle, { color: colors.accent }]}>
-                        EDITS AWAITING YOUR REVIEW
+                        {request.staged_diff.length} CHANGE
+                        {request.staged_diff.length === 1 ? '' : 'S'} AWAITING YOUR REVIEW
                       </Text>
                     </View>
+
+                    {request.staged_diff.length === 0 ? (
+                      <Text style={[styles.stagedHint, { color: colors.textSecondary }]}>
+                        The submitted values match the live listing, so nothing would change.
+                      </Text>
+                    ) : (
+                      request.staged_diff.map((entry) => (
+                        <View key={entry.field} style={styles.diffRow}>
+                          <Text style={[styles.diffLabel, { color: colors.textSecondary }]}>
+                            {entry.label}
+                          </Text>
+                          <View style={styles.diffValues}>
+                            <Text
+                              style={[styles.diffBefore, { color: colors.textSecondary }]}
+                              numberOfLines={2}
+                            >
+                              {entry.before}
+                            </Text>
+                            <Ionicons
+                              name="arrow-forward"
+                              size={13}
+                              color={colors.textTertiary}
+                            />
+                            <Text
+                              style={[styles.diffAfter, { color: colors.text }]}
+                              numberOfLines={2}
+                            >
+                              {entry.after}
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    )}
+
                     <Text style={[styles.stagedHint, { color: colors.textSecondary }]}>
-                      These changes are not live yet. Applying them updates the listing
-                      immediately.
+                      Not live yet. Applying updates the listing immediately.
                     </Text>
                   </View>
                 ) : null}
@@ -549,6 +583,33 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     marginTop: 6,
     lineHeight: 16,
+  },
+  diffRow: {
+    marginTop: 12,
+  },
+  diffLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  diffValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  diffBefore: {
+    flex: 1,
+    fontSize: 12.5,
+    textDecorationLine: 'line-through',
+    lineHeight: 17,
+  },
+  diffAfter: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '600',
+    lineHeight: 17,
   },
   actions: {
     flexDirection: 'row',

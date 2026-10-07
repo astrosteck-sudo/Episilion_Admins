@@ -143,6 +143,16 @@ export interface UpdateRequest {
   reviewed_by_name: string | null;
   /** True when the sub admin has submitted edits awaiting review. */
   has_staged_changes: boolean;
+  /** Only the fields that actually differ, with before and after values. */
+  staged_diff: StagedDiffEntry[];
+}
+
+/** One changed field, resolved for display. */
+export interface StagedDiffEntry {
+  field: string;
+  label: string;
+  before: string;
+  after: string;
 }
 
 /** The latest request for one hostel, or null when there has never been one. */
