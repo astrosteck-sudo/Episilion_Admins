@@ -68,6 +68,10 @@ export interface HostelStats {
   approved: number;
   rejected: number;
   total: number;
+  /** Update requests still awaiting a super admin decision. */
+  update_pending: number;
+  /** `pending + update_pending` — what the dashboard shows as "Pending". */
+  pending_total: number;
 }
 
 export interface NewHostelPayload {
@@ -116,6 +120,178 @@ export async function approveHostel(id: string) {
 
 export async function rejectHostel(id: string, reason: string) {
   const res = await apiClient.patch(`/api/team/hostels/${id}/reject`, { reason });
+  return res.data;
+}
+
+/* ------------------------------ update requests ----------------------------- */
+
+export type UpdateRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface UpdateRequest {
+  id: number;
+  hostel_id: string;
+  hostel_name: string;
+  main_image: string | null;
+  hostel_status: HostelStatus;
+  reason: string;
+  status: UpdateRequestStatus;
+  decision_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  requested_by_name: string | null;
+  requested_by_email: string | null;
+  reviewed_by_name: string | null;
+  /** True when the sub admin has submitted edits awaiting review. */
+  has_staged_changes: boolean;
+}
+
+/** The latest request for one hostel, or null when there has never been one. */
+export interface HostelUpdateRequest {
+  id: number;
+  hostel_id: string;
+  reason: string;
+  status: UpdateRequestStatus;
+  decision_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by_name: string | null;
+}
+
+/* --------------------------- staged hostel edits ---------------------------- */
+
+/** The fields a sub admin may change. Unlisted fields are never applied. */
+export interface HostelChanges {
+  name?: string | null;
+  type?: string | null;
+  university?: string | null;
+  year_established?: number | null;
+  directions?: string | null;
+  distance_to_campus_in_minutes?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  manager_name?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  office_hours?: string | null;
+  website?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  billing_period?: string | null;
+  installment_allowed?: boolean | null;
+  utilities_fee?: number | null;
+  maintenance_fee?: number | null;
+  caution_deposit?: number | null;
+  refund_policy?: string | null;
+  rooms?: { type: string; price: number | null }[];
+  perks?: string[];
+  rules?: string[];
+}
+
+export interface HostelChangeForm {
+  hostel: {
+    hostel_id: string;
+    name: string;
+    type: string | null;
+    university: string | null;
+    year_established: number | null;
+    main_image: string | null;
+    status: HostelStatus;
+  };
+  request_id: number;
+  request_reason: string;
+  /** Non-null when a previous edit set is still awaiting review. */
+  staged: HostelChanges | null;
+  values: HostelChanges;
+}
+
+/** Live values plus the permission check, so the form can be prefilled. */
+export async function getHostelChanges(hostelId: string) {
+  const res = await apiClient.get<HostelChangeForm>(`/api/team/hostels/${hostelId}/changes`);
+  return res.data;
+}
+
+/** Stages edits for super admin review. Nothing goes live until it is approved. */
+export async function stageHostelChanges(hostelId: string, changes: HostelChanges) {
+  const res = await apiClient.put<{ message: string }>(
+    `/api/team/hostels/${hostelId}/changes`,
+    { changes },
+  );
+  return res.data;
+}
+
+export async function approveStagedChanges(requestId: number) {
+  const res = await apiClient.patch<{ message: string; applied: string[] }>(
+    `/api/team/hostels/update-requests/${requestId}/changes/approve`,
+  );
+  return res.data;
+}
+
+export async function rejectStagedChanges(requestId: number, reason: string) {
+  const res = await apiClient.patch(
+    `/api/team/hostels/update-requests/${requestId}/changes/reject`,
+    { reason },
+  );
+  return res.data;
+}
+
+/** A hostel name the sub admin typed, resolved to concrete hostels. */
+export interface HostelLookupMatch {
+  hostel_id: string;
+  name: string;
+  university: string | null;
+  status: HostelStatus;
+  latest_request: HostelUpdateRequest | null;
+  /** False when the newest request belongs to a different admin. */
+  latest_request_is_mine: boolean;
+  /** `pending_other` means someone else already has a request queued. */
+  request_state: UpdateRequestStatus | 'pending_other' | null;
+}
+
+/**
+ * Lists hostels that can be requested for update. Called with no name it returns
+ * every hostel, so the sub admin can choose from the full list.
+ */
+export async function listUpdateCandidates(name?: string) {
+  const res = await apiClient.get<{ matches: HostelLookupMatch[] }>(
+    '/api/team/hostels/update-candidates',
+    { params: name ? { name } : undefined },
+  );
+  return res.data.matches;
+}
+
+export async function createUpdateRequest(hostelId: string, reason: string) {
+  const res = await apiClient.post<{ message: string; request: HostelUpdateRequest }>(
+    `/api/team/hostels/${hostelId}/update-requests`,
+    { reason },
+  );
+  return res.data;
+}
+
+export async function listUpdateRequests(status: UpdateRequestStatus | 'all' = 'pending') {
+  const res = await apiClient.get<{ requests: UpdateRequest[] }>(
+    '/api/team/hostels/update-requests',
+    { params: { status } },
+  );
+  return res.data.requests;
+}
+
+export async function getHostelUpdateRequest(hostelId: string) {
+  const res = await apiClient.get<{ request: HostelUpdateRequest | null }>(
+    `/api/team/hostels/${hostelId}/update-request`,
+  );
+  return res.data.request;
+}
+
+export async function approveUpdateRequest(requestId: number) {
+  const res = await apiClient.patch(`/api/team/hostels/update-requests/${requestId}/approve`);
+  return res.data;
+}
+
+export async function rejectUpdateRequest(requestId: number, reason: string) {
+  const res = await apiClient.patch(`/api/team/hostels/update-requests/${requestId}/reject`, {
+    reason,
+  });
   return res.data;
 }
 

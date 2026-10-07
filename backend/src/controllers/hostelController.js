@@ -384,10 +384,6 @@ exports.getHostel = async (req, res) => {
     const hostel = hostelRows[0];
     if (!hostel) return res.status(404).json({ message: 'Hostel not found' });
 
-    if (req.teamUser.role !== 'super_admin' && hostel.created_by !== req.teamUser.id) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-
     const [[locations], [contacts], [rooms], [amenities], [furnishing], [rules], [media], [pricing], [log]] =
       await Promise.all([
         db.query('SELECT * FROM locations WHERE hostel_id = ? LIMIT 1', [id]),
@@ -500,21 +496,800 @@ exports.approveHostel = (req, res) => decide(req, res, 'approved');
 /** PATCH /api/team/hostels/:id/reject   (super_admin) body: { reason } */
 exports.rejectHostel = (req, res) => decide(req, res, 'rejected');
 
+/* ----------------------------- update requests ------------------------------ */
+
+/**
+ * A sub admin cannot edit a hostel directly. They request permission with a
+ * reason, and only an approved request unlocks the edit form for that hostel.
+ */
+
+/**
+ * GET /api/team/hostels/update-candidates[?name=...]
+ * Lists the hostels a team member can request an update for. Only live
+ * (approved) hostels qualify — a pending or rejected submission is not on the
+ * platform yet, so there is nothing to update. With no name it returns every
+ * eligible hostel; with a name it narrows down. Each row carries its latest
+ * update request so the app knows if it is locked or unlocked in one call.
+ */
+exports.listUpdateCandidates = async (req, res) => {
+  try {
+    const name = str(req.query.name);
+    if (name && name.length < 2) {
+      return res.status(400).json({ message: 'Enter at least 2 characters of the hostel name' });
+    }
+
+    // The correlated subquery returns only the newest request per hostel.
+    const baseSql = `
+      SELECT h.hostel_id, h.name, h.university, h.status,
+             r.id AS req_id, r.reason AS req_reason, r.status AS req_status,
+             r.decision_note AS req_decision_note, r.created_at AS req_created_at,
+             r.reviewed_at AS req_reviewed_at,
+             r.requested_by AS req_requested_by_id,
+             rv.full_name AS req_reviewed_by_name
+      FROM hostels h
+      LEFT JOIN hostel_update_requests r ON r.id = (
+        SELECT r2.id FROM hostel_update_requests r2
+        WHERE r2.hostel_id = h.hostel_id
+        ORDER BY r2.created_at DESC, r2.id DESC
+        LIMIT 1
+      )
+      LEFT JOIN team_users rv ON rv.id = r.reviewed_by
+      WHERE h.status = 'approved'`;
+
+    let rows;
+    if (!name) {
+      [rows] = await db.query(`${baseSql} ORDER BY h.name ASC LIMIT 500`);
+    } else {
+      const runLookup = (condition, params) =>
+        db.query(`${baseSql} AND ${condition} ORDER BY h.name ASC LIMIT 50`, params);
+      [rows] = await runLookup('LOWER(h.name) = LOWER(?)', [name]);
+      if (!rows.length) {
+        [rows] = await runLookup('h.name LIKE ?', [`%${name}%`]);
+      }
+    }
+
+    const self = Number(req.teamUser.id);
+    const isSuperAdmin = req.teamUser.role === 'super_admin';
+
+    res.json({
+      matches: rows.map((row) => {
+        const request =
+          row.req_id === null
+            ? null
+            : {
+                id: row.req_id,
+                hostel_id: row.hostel_id,
+                reason: row.req_reason,
+                status: row.req_status,
+                decision_note: row.req_decision_note,
+                created_at: row.req_created_at,
+                reviewed_at: row.req_reviewed_at,
+                reviewed_by_name: row.req_reviewed_by_name,
+              };
+
+        const isMine = isSuperAdmin || Number(row.req_requested_by_id) === self;
+
+        let requestState = null;
+        if (request) {
+          if (request.status === 'pending' && !isMine) {
+            // Another admin's request is already in the queue.
+            requestState = 'pending_other';
+          } else {
+            requestState = request.status;
+          }
+        }
+
+        return {
+          hostel_id: row.hostel_id,
+          name: row.name,
+          university: row.university,
+          status: row.status,
+          latest_request: request,
+          latest_request_is_mine: isMine,
+          request_state: requestState,
+        };
+      }),
+    });
+  } catch (err) {
+    console.error('listUpdateCandidates error:', err);
+    res.status(500).json({ message: 'Failed to load hostels' });
+  }
+};
+
+/** POST /api/team/hostels/:id/update-requests   (sub_admin) body: { reason } */
+exports.createUpdateRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reason = str(req.body?.reason);
+
+    if (!reason) {
+      return res.status(400).json({ message: 'A reason for the update is required' });
+    }
+    if (reason.length > 500) {
+      return res.status(400).json({ message: 'The reason must be 500 characters or fewer' });
+    }
+
+    const [rows] = await db.query(
+      'SELECT hostel_id, name, status FROM hostels WHERE hostel_id = ?',
+      [id]
+    );
+    const hostel = rows[0];
+    if (!hostel) return res.status(404).json({ message: 'Hostel not found' });
+
+    // Only live hostels can be updated, matching what the picker offers.
+    if (hostel.status !== 'approved') {
+      return res
+        .status(400)
+        .json({ message: 'Only approved hostels can be updated' });
+    }
+
+    // Any team member may request an update for any approved hostel; the super
+    // admin approval is the real gate. Only one request may await review per
+    // hostel, so two admins cannot queue duplicate work for the super admin.
+    const [existing] = await db.query(
+      `SELECT id, requested_by FROM hostel_update_requests
+       WHERE hostel_id = ? AND status = 'pending' LIMIT 1`,
+      [id]
+    );
+    if (existing.length) {
+      const mine = Number(existing[0].requested_by) === Number(req.teamUser.id);
+      return res.status(409).json({
+        message: mine
+          ? 'You already have an update request awaiting review for this hostel'
+          : 'This hostel already has an update request awaiting review',
+      });
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO hostel_update_requests (hostel_id, requested_by, reason)
+       VALUES (?, ?, ?)`,
+      [id, req.teamUser.id, reason]
+    );
+
+    await db.query(
+      `INSERT INTO hostel_review_log (hostel_id, action, performed_by, note)
+       VALUES (?, 'update_requested', ?, ?)`,
+      [id, req.teamUser.id, reason]
+    );
+
+    res.status(201).json({
+      message: 'Update request sent for approval',
+      request: {
+        id: result.insertId,
+        hostel_id: id,
+        hostel_name: hostel.name,
+        reason,
+        status: 'pending',
+      },
+    });
+  } catch (err) {
+    console.error('createUpdateRequest error:', err);
+    res.status(500).json({ message: 'Failed to send the update request' });
+  }
+};
+
+/**
+ * GET /api/team/hostels/update-requests?status=pending|approved|rejected|all
+ * super_admin sees every request, sub_admin only their own.
+ */
+exports.listUpdateRequests = async (req, res) => {
+  try {
+    const status = str(req.query.status) || 'pending';
+    const where = [];
+    const params = [];
+
+    if (status !== 'all') {
+      where.push('r.status = ?');
+      params.push(status);
+    }
+    if (req.teamUser.role !== 'super_admin') {
+      where.push('r.requested_by = ?');
+      params.push(req.teamUser.id);
+    }
+
+    const [rows] = await db.query(
+      `SELECT
+         r.id, r.hostel_id, r.reason, r.status, r.decision_note,
+         r.created_at, r.reviewed_at,
+         (r.pending_changes IS NOT NULL) AS has_staged_changes,
+         h.name AS hostel_name, h.main_image, h.status AS hostel_status,
+         u.full_name AS requested_by_name, u.email AS requested_by_email,
+         rv.full_name AS reviewed_by_name
+       FROM hostel_update_requests r
+       JOIN hostels h ON h.hostel_id = r.hostel_id
+       LEFT JOIN team_users u ON u.id = r.requested_by
+       LEFT JOIN team_users rv ON rv.id = r.reviewed_by
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY r.created_at DESC, r.id DESC`,
+      params
+    );
+
+    res.json({
+      requests: rows.map((row) => ({
+        ...row,
+        has_staged_changes: Boolean(row.has_staged_changes),
+      })),
+    });
+  } catch (err) {
+    console.error('listUpdateRequests error:', err);
+    res.status(500).json({ message: 'Failed to load update requests' });
+  }
+};
+
+/**
+ * GET /api/team/hostels/:id/update-request
+ * The latest request for a hostel, so the sub admin app knows whether the edit
+ * form is unlocked. Returns `{ request: null }` when there has never been one.
+ */
+exports.getHostelUpdateRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [hostelRows] = await db.query(
+      'SELECT hostel_id, created_by FROM hostels WHERE hostel_id = ?',
+      [id]
+    );
+    const hostel = hostelRows[0];
+    if (!hostel) return res.status(404).json({ message: 'Hostel not found' });
+
+    const [rows] = await db.query(
+      `SELECT r.id, r.hostel_id, r.reason, r.status, r.decision_note,
+              r.created_at, r.reviewed_at, rv.full_name AS reviewed_by_name
+       FROM hostel_update_requests r
+       LEFT JOIN team_users rv ON rv.id = r.reviewed_by
+       WHERE r.hostel_id = ?
+       ORDER BY r.created_at DESC, r.id DESC
+       LIMIT 1`,
+      [id]
+    );
+
+    res.json({ request: rows[0] || null });
+  } catch (err) {
+    console.error('getHostelUpdateRequest error:', err);
+    res.status(500).json({ message: 'Failed to load the update request' });
+  }
+};
+
+/** PATCH /api/team/hostels/update-requests/:requestId/approve  (super_admin) */
+exports.approveUpdateRequest = (req, res) => decideUpdateRequest(req, res, 'approved');
+/** PATCH /api/team/hostels/update-requests/:requestId/reject   (super_admin) body: { reason } */
+exports.rejectUpdateRequest = (req, res) => decideUpdateRequest(req, res, 'rejected');
+
+async function decideUpdateRequest(req, res, action) {
+  const conn = await db.getConnection();
+  try {
+    const { requestId } = req.params;
+    const note = str(req.body?.reason || req.body?.note);
+
+    if (action === 'rejected' && !note) {
+      return res.status(400).json({ message: 'A reason for the rejection is required' });
+    }
+
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      `SELECT id, hostel_id, status FROM hostel_update_requests
+       WHERE id = ? FOR UPDATE`,
+      [requestId]
+    );
+    const request = rows[0];
+    if (!request) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Update request not found' });
+    }
+    if (request.status !== 'pending') {
+      await conn.rollback();
+      return res.status(409).json({ message: `This request was already ${request.status}` });
+    }
+
+    await conn.query(
+      `UPDATE hostel_update_requests
+         SET status = ?, decision_note = ?, reviewed_by = ?, reviewed_at = NOW()
+       WHERE id = ?`,
+      [action, note, req.teamUser.id, requestId]
+    );
+
+    await conn.query(
+      `INSERT INTO hostel_review_log (hostel_id, action, performed_by, note)
+       VALUES (?, ?, ?, ?)`,
+      [
+        request.hostel_id,
+        action === 'approved' ? 'update_approved' : 'update_rejected',
+        req.teamUser.id,
+        note,
+      ]
+    );
+
+    await conn.commit();
+
+    res.json({
+      message: action === 'approved' ? 'Update request approved' : 'Update request rejected',
+      request: { id: Number(requestId), hostel_id: request.hostel_id, status: action },
+    });
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* rollback is best effort */
+    }
+    console.error(`decideUpdateRequest(${action}) error:`, err);
+    res.status(500).json({ message: `Failed to ${action} the update request` });
+  } finally {
+    conn.release();
+  }
+}
+
+/* ----------------------------- staged hostel edits -------------------------- */
+
+/**
+ * A sub admin edits a hostel only through an approved update request.
+ *
+ * Flow:
+ *   1. request approved            -> the edit form unlocks
+ *   2. PUT  .../changes            -> edits stored as JSON, NOT live yet
+ *   3. super admin approves/rejects-> edits applied to the live tables or dropped
+ */
+
+/**
+ * The open, approved request that grants this user permission to edit a hostel.
+ * After a change set is applied, the request is marked 'rejected' so the
+ * permission is spent and a fresh request is needed.
+ */
+async function findEditableRequest(hostelId, userId) {
+  const [rows] = await db.query(
+    `SELECT * FROM hostel_update_requests
+     WHERE hostel_id = ? AND requested_by = ? AND status = 'approved'
+     ORDER BY created_at DESC, id DESC LIMIT 1`,
+    [hostelId, userId]
+  );
+  return rows[0] || null;
+}
+
+/** MySQL may hand back JSON as a string depending on the driver's type parsing. */
+function parseChanges(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return value;
+}
+
+/**
+ * Accepts the fields the edit form is allowed to touch. Anything the form can
+ * echo back but the sub admin cannot change (status, ids, review fields) is
+ * ignored, so a crafted payload cannot promote a hostel or reassign it.
+ */
+function sanitizeChanges(body) {
+  const src = body?.changes ?? body ?? {};
+  const out = {};
+
+  const scalar = {
+    name: (v) => str(v),
+    type: (v) => str(v),
+    university: (v) => str(v),
+    year_established: (v) => num(v),
+    directions: (v) => str(v),
+    distance_to_campus_in_minutes: (v) => num(v),
+    latitude: (v) => num(v),
+    longitude: (v) => num(v),
+    manager_name: (v) => str(v),
+    phone: (v) => str(v),
+    whatsapp: (v) => str(v),
+    email: (v) => str(v),
+    office_hours: (v) => str(v),
+    website: (v) => str(v),
+    price_min: (v) => num(v),
+    price_max: (v) => num(v),
+    billing_period: (v) => str(v),
+    installment_allowed: (v) => bool(v),
+    utilities_fee: (v) => num(v),
+    maintenance_fee: (v) => num(v),
+    caution_deposit: (v) => num(v),
+    refund_policy: (v) => str(v),
+  };
+  for (const [key, cast] of Object.entries(scalar)) {
+    if (Object.prototype.hasOwnProperty.call(src, key)) out[key] = cast(src[key]);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(src, 'rooms')) {
+    out.rooms = parseRoomTypes(src.rooms);
+  }
+  if (Object.prototype.hasOwnProperty.call(src, 'perks')) {
+    out.perks = parseList(src.perks);
+  }
+  if (Object.prototype.hasOwnProperty.call(src, 'rules')) {
+    out.rules = parseList(src.rules);
+  }
+
+  return out;
+}
+
+function isEmptyChanges(changes) {
+  return Object.keys(changes).length === 0;
+}
+
+/** What the sub admin may edit, prefilled with the live values. */
+exports.getHostelChanges = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const request = await findEditableRequest(id, req.teamUser.id);
+    if (!request) {
+      return res
+        .status(403)
+        .json({ message: 'You do not have an approved update request for this hostel' });
+    }
+
+    const [[locations], [contacts], [rooms], [amenities], [furnishing], [rules], [pricing]] =
+      await Promise.all([
+        db.query('SELECT * FROM locations WHERE hostel_id = ? LIMIT 1', [id]),
+        db.query('SELECT * FROM contact WHERE hostel_id = ? LIMIT 1', [id]),
+        db.query("SELECT room_type, price FROM rooms WHERE hostel_id = ? ORDER BY room_id", [id]),
+        db.query('SELECT amenity FROM amenities WHERE hostel_id = ?', [id]),
+        db.query('SELECT furnishing FROM furnishing WHERE hostel_id = ?', [id]),
+        db.query('SELECT rule FROM rules WHERE hostel_id = ?', [id]),
+        db.query('SELECT * FROM pricing WHERE hostel_id = ? LIMIT 1', [id]),
+      ]);
+
+    const [hostelRows] = await db.query(
+      `SELECT hostel_id, name, type, university, year_established, main_image, status
+       FROM hostels WHERE hostel_id = ?`,
+      [id]
+    );
+    if (!hostelRows.length) return res.status(404).json({ message: 'Hostel not found' });
+
+    // Furnishing holds the full perk list; amenities is the card subset.
+    const perks = furnishing.map((f) => f.furnishing);
+
+    res.json({
+      hostel: hostelRows[0],
+      request_id: request.id,
+      request_reason: request.reason,
+      staged: parseChanges(request.pending_changes),
+      values: {
+        name: hostelRows[0].name,
+        type: hostelRows[0].type,
+        university: hostelRows[0].university,
+        year_established: hostelRows[0].year_established,
+        ...(locations[0] || {}),
+        ...(contacts[0] || {}),
+        ...(pricing[0] || {}),
+        rooms: rooms.map((r) => ({ type: r.room_type, price: r.price })),
+        perks,
+        rules: rules.map((r) => r.rule),
+        amenities_count: amenities.length,
+      },
+    });
+  } catch (err) {
+    console.error('getHostelChanges error:', err);
+    res.status(500).json({ message: 'Failed to load the editable hostel' });
+  }
+};
+
+/** Stages the edits. Nothing is written to the live tables until approval. */
+exports.stageHostelChanges = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const request = await findEditableRequest(id, req.teamUser.id);
+    if (!request) {
+      return res
+        .status(403)
+        .json({ message: 'You do not have an approved update request for this hostel' });
+    }
+    if (request.pending_changes) {
+      return res
+        .status(409)
+        .json({ message: 'Your changes are already awaiting super admin review' });
+    }
+
+    const changes = sanitizeChanges(req.body);
+    if (isEmptyChanges(changes)) {
+      return res.status(400).json({ message: 'No changes were provided' });
+    }
+    if (changes.name === '') {
+      return res.status(400).json({ message: 'The hostel name cannot be empty' });
+    }
+
+    await db.query(
+      'UPDATE hostel_update_requests SET pending_changes = ? WHERE id = ?',
+      [JSON.stringify(changes), request.id]
+    );
+
+    await db.query(
+      `INSERT INTO hostel_review_log (hostel_id, action, performed_by, note)
+       VALUES (?, 'update_submitted', ?, ?)`,
+      [id, req.teamUser.id, `Edits staged: ${Object.keys(changes).join(', ')}`]
+    );
+
+    res.json({
+      message: 'Your changes were sent for review',
+      request: { id: request.id, hostel_id: id, staged: changes },
+    });
+  } catch (err) {
+    console.error('stageHostelChanges error:', err);
+    res.status(500).json({ message: 'Failed to save your changes' });
+  }
+};
+
+/** Applies a staged change set to the live tables. Runs inside a transaction. */
+async function applyChanges(conn, hostelId, changes) {
+  const applied = [];
+
+  // hostels: only the columns the form owns.
+  const hostelCols = ['name', 'type', 'university', 'year_established'];
+  const hostelSets = [];
+  const hostelVals = [];
+  for (const col of hostelCols) {
+    if (Object.prototype.hasOwnProperty.call(changes, col)) {
+      hostelSets.push(`${col} = ?`);
+      hostelVals.push(changes[col]);
+      applied.push(`hostels.${col}`);
+    }
+  }
+  if (hostelSets.length) {
+    await conn.query(
+      `UPDATE hostels SET ${hostelSets.join(', ')} WHERE hostel_id = ?`,
+      [...hostelVals, hostelId]
+    );
+  }
+
+  // locations
+  const locCols = ['directions', 'distance_to_campus_in_minutes', 'latitude', 'longitude'];
+  const locSets = [];
+  const locVals = [];
+  for (const col of locCols) {
+    if (Object.prototype.hasOwnProperty.call(changes, col)) {
+      locSets.push(`${col} = ?`);
+      locVals.push(changes[col]);
+      applied.push(`locations.${col}`);
+    }
+  }
+  if (locSets.length) {
+    const [existing] = await conn.query('SELECT location_id FROM locations WHERE hostel_id = ? LIMIT 1', [hostelId]);
+    if (existing.length) {
+      await conn.query(
+        `UPDATE locations SET ${locSets.join(', ')} WHERE hostel_id = ?`,
+        [...locVals, hostelId]
+      );
+    } else {
+      const cols = locCols.filter((c) => Object.prototype.hasOwnProperty.call(changes, c));
+      await conn.query(
+        `INSERT INTO locations (hostel_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`,
+        [hostelId, ...cols.map((c) => changes[c])]
+      );
+    }
+  }
+
+  // contact
+  const contactCols = ['manager_name', 'phone', 'whatsapp', 'email', 'office_hours', 'website'];
+  const contactSets = [];
+  const contactVals = [];
+  for (const col of contactCols) {
+    if (Object.prototype.hasOwnProperty.call(changes, col)) {
+      contactSets.push(`${col} = ?`);
+      contactVals.push(changes[col]);
+      applied.push(`contact.${col}`);
+    }
+  }
+  if (contactSets.length) {
+    const [existing] = await conn.query('SELECT contact_id FROM contact WHERE hostel_id = ? LIMIT 1', [hostelId]);
+    if (existing.length) {
+      await conn.query(
+        `UPDATE contact SET ${contactSets.join(', ')} WHERE hostel_id = ?`,
+        [...contactVals, hostelId]
+      );
+    } else {
+      const cols = contactCols.filter((c) => Object.prototype.hasOwnProperty.call(changes, c));
+      await conn.query(
+        `INSERT INTO contact (hostel_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`,
+        [hostelId, ...cols.map((c) => changes[c])]
+      );
+    }
+  }
+
+  // pricing
+  const pricingCols = [
+    'price_min', 'price_max', 'billing_period', 'installment_allowed',
+    'utilities_fee', 'maintenance_fee', 'caution_deposit', 'refund_policy',
+  ];
+  const pricingSets = [];
+  const pricingVals = [];
+  for (const col of pricingCols) {
+    if (Object.prototype.hasOwnProperty.call(changes, col)) {
+      pricingSets.push(`${col} = ?`);
+      pricingVals.push(changes[col]);
+      applied.push(`pricing.${col}`);
+    }
+  }
+  if (pricingSets.length) {
+    const [existing] = await conn.query('SELECT pricing_id FROM pricing WHERE hostel_id = ? LIMIT 1', [hostelId]);
+    if (existing.length) {
+      await conn.query(
+        `UPDATE pricing SET ${pricingSets.join(', ')} WHERE hostel_id = ?`,
+        [...pricingVals, hostelId]
+      );
+    } else {
+      const cols = pricingCols.filter((c) => Object.prototype.hasOwnProperty.call(changes, c));
+      await conn.query(
+        `INSERT INTO pricing (hostel_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`,
+        [hostelId, ...cols.map((c) => changes[c])]
+      );
+    }
+  }
+
+  // rooms: replaced wholesale when the form sends a room list.
+  if (Object.prototype.hasOwnProperty.call(changes, 'rooms')) {
+    await conn.query('DELETE FROM rooms WHERE hostel_id = ?', [hostelId]);
+    for (const room of changes.rooms) {
+      await conn.query(
+        'INSERT INTO rooms (hostel_id, room_type, price, available_rooms) VALUES (?, ?, ?, ?)',
+        [hostelId, room.type, room.price, null]
+      );
+    }
+    applied.push(`rooms (${changes.rooms.length})`);
+  }
+
+  // perks are mirrored into amenities (card subset) and furnishing (full list).
+  if (Object.prototype.hasOwnProperty.call(changes, 'perks')) {
+    const { card, all } = splitPerks(changes.perks);
+    await conn.query('DELETE FROM amenities WHERE hostel_id = ?', [hostelId]);
+    await conn.query('DELETE FROM furnishing WHERE hostel_id = ?', [hostelId]);
+    for (const amenity of card) {
+      await conn.query('INSERT INTO amenities (hostel_id, amenity) VALUES (?, ?)', [hostelId, amenity]);
+    }
+    for (const item of all) {
+      await conn.query('INSERT INTO furnishing (hostel_id, furnishing) VALUES (?, ?)', [hostelId, item]);
+    }
+    applied.push(`perks (${all.length}, ${card.length} on card)`);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(changes, 'rules')) {
+    await conn.query('DELETE FROM rules WHERE hostel_id = ?', [hostelId]);
+    for (const rule of changes.rules) {
+      await conn.query('INSERT INTO rules (hostel_id, rule) VALUES (?, ?)', [hostelId, rule]);
+    }
+    applied.push(`rules (${changes.rules.length})`);
+  }
+
+  return applied;
+}
+
+/** PATCH .../update-requests/:requestId/changes/approve  (super_admin) */
+exports.approveStagedChanges = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    const { requestId } = req.params;
+
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      'SELECT * FROM hostel_update_requests WHERE id = ? FOR UPDATE',
+      [requestId]
+    );
+    const request = rows[0];
+    if (!request) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Update request not found' });
+    }
+
+    const changes = parseChanges(request.pending_changes);
+    if (!changes) {
+      await conn.rollback();
+      return res.status(409).json({ message: 'There are no staged changes to approve' });
+    }
+
+    const applied = await applyChanges(conn, request.hostel_id, changes);
+
+    // Applying consumes the permission: the request is closed and cleared, so
+    // the sub admin must request again before making further edits.
+    await conn.query(
+      `UPDATE hostel_update_requests
+         SET status = 'rejected', pending_changes = NULL,
+             decision_note = ?, reviewed_by = ?, reviewed_at = NOW()
+       WHERE id = ?`,
+      ['Edits applied', req.teamUser.id, requestId]
+    );
+
+    await conn.query(
+      `INSERT INTO hostel_review_log (hostel_id, action, performed_by, note)
+       VALUES (?, 'change_approved', ?, ?)`,
+      [request.hostel_id, req.teamUser.id, `Applied: ${applied.join(', ') || 'no fields'}`]
+    );
+
+    await conn.commit();
+
+    res.json({
+      message: 'Edits applied to the live hostel',
+      request: { id: Number(requestId), hostel_id: request.hostel_id, status: 'rejected' },
+      applied,
+    });
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* rollback is best effort */
+    }
+    console.error('approveStagedChanges error:', err);
+    res.status(500).json({ message: 'Failed to apply the changes' });
+  } finally {
+    conn.release();
+  }
+};
+
+/** PATCH .../update-requests/:requestId/changes/reject  (super_admin) body: { reason } */
+exports.rejectStagedChanges = async (req, res) => {
+  const conn = await db.getConnection();
+  try {
+    const { requestId } = req.params;
+    const reason = str(req.body?.reason);
+    if (!reason) return res.status(400).json({ message: 'A rejection reason is required' });
+
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      'SELECT * FROM hostel_update_requests WHERE id = ? FOR UPDATE',
+      [requestId]
+    );
+    const request = rows[0];
+    if (!request) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Update request not found' });
+    }
+    if (!parseChanges(request.pending_changes)) {
+      await conn.rollback();
+      return res.status(409).json({ message: 'There are no staged changes to reject' });
+    }
+
+    // Dropping the changes also closes the request, so the permission is spent
+    // and the hostel keeps its current live values.
+    await conn.query(
+      `UPDATE hostel_update_requests
+         SET status = 'rejected', pending_changes = NULL,
+             decision_note = ?, reviewed_by = ?, reviewed_at = NOW()
+       WHERE id = ?`,
+      [reason, req.teamUser.id, requestId]
+    );
+
+    await conn.query(
+      `INSERT INTO hostel_review_log (hostel_id, action, performed_by, note)
+       VALUES (?, 'change_rejected', ?, ?)`,
+      [request.hostel_id, req.teamUser.id, reason]
+    );
+
+    await conn.commit();
+
+    res.json({
+      message: 'Changes rejected; the hostel was left unchanged',
+      request: { id: Number(requestId), hostel_id: request.hostel_id, status: 'rejected' },
+    });
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* rollback is best effort */
+    }
+    console.error('rejectStagedChanges error:', err);
+    res.status(500).json({ message: 'Failed to reject the changes' });
+  } finally {
+    conn.release();
+  }
+};
+
 /* ---------------------------------- counters --------------------------------- */
 
 /** GET /api/team/hostels/stats  — dashboard counters. */
 exports.getStats = async (req, res) => {
   try {
-    const params = [];
-    let scope = '';
-    if (req.teamUser.role !== 'super_admin') {
-      scope = 'WHERE created_by = ?';
-      params.push(req.teamUser.id);
-    }
+    const isSuperAdmin = req.teamUser.role === 'super_admin';
 
     const [rows] = await db.query(
-      `SELECT status, COUNT(*) AS total FROM hostels ${scope} GROUP BY status`,
-      params
+      `SELECT status, COUNT(*) AS total FROM hostels ${isSuperAdmin ? '' : 'WHERE created_by = ?'} GROUP BY status`,
+      isSuperAdmin ? [] : [req.teamUser.id]
     );
 
     const stats = { pending: 0, approved: 0, rejected: 0, total: 0 };
@@ -522,6 +1297,17 @@ exports.getStats = async (req, res) => {
       stats[row.status] = Number(row.total);
       stats.total += Number(row.total);
     }
+
+    // Update requests still awaiting a decision. A sub admin counts only the
+    // ones they raised; a super admin counts everything in their queue.
+    const [requestRows] = await db.query(
+      `SELECT COUNT(*) AS total FROM hostel_update_requests
+       WHERE status = 'pending'${isSuperAdmin ? '' : ' AND requested_by = ?'}`,
+      isSuperAdmin ? [] : [req.teamUser.id]
+    );
+    stats.update_pending = Number(requestRows[0]?.total ?? 0);
+    // What the app shows as "Pending": new submissions plus requested updates.
+    stats.pending_total = stats.pending + stats.update_pending;
 
     res.json({ stats });
   } catch (err) {

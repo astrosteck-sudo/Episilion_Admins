@@ -59,7 +59,7 @@ export default function SubAdminHomeScreen() {
           setRecent(submissions.slice(0, 4));
         } catch {
           if (!active) return;
-          setStats({ pending: 0, approved: 0, rejected: 0, total: 0 });
+          setStats({ pending: 0, approved: 0, rejected: 0, total: 0, update_pending: 0, pending_total: 0 });
           setRecent([]);
         } finally {
           if (active) setIsLoadingStats(false);
@@ -219,11 +219,11 @@ export default function SubAdminHomeScreen() {
           <TouchableOpacity
             style={styles.statItem}
             activeOpacity={0.7}
-            onPress={() => router.push('/(sub-admin)/submissions')}
+            onPress={() => router.push('/(sub-admin)/submissions?filter=pending')}
           >
             <Ionicons name="time-outline" size={18} color={colors.accent} />
             <Text style={[styles.statNumber, { color: colors.text }]}>
-              {statValue(stats?.pending)}
+              {statValue(stats?.pending_total)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pending</Text>
           </TouchableOpacity>

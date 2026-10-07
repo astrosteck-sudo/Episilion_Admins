@@ -34,7 +34,14 @@ export default function SuperAdminHomeScreen() {
   const user = useAuthStore((state) => state.user);
   const [activeFilter, setActiveFilter] = useState('All items');
   const [hostels, setHostels] = useState<HostelListItem[]>([]);
-  const [stats, setStats] = useState<HostelStats>({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [stats, setStats] = useState<HostelStats>({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    total: 0,
+    update_pending: 0,
+    pending_total: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -163,7 +170,7 @@ export default function SuperAdminHomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.filterButton, activeFilter === 'Update Requests' ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.inputBackground, borderColor: colors.border }]}
-            onPress={() => setActiveFilter('Update Requests')}
+            onPress={() => router.push('/(super-admin)/update-requests')}
           >
             <Text style={[styles.filterText, activeFilter === 'Update Requests' ? { color: '#FFFFFF' } : { color: colors.text }]}>Update Requests</Text>
           </TouchableOpacity>

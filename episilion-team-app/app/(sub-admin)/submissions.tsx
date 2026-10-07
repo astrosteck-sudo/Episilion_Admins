@@ -10,10 +10,17 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../src/store/themeStore';
-import { listHostels, type HostelListItem, type HostelStatus } from '../../src/api/hostels';
+import {
+  listHostels,
+  listUpdateRequests,
+  type HostelListItem,
+  type HostelStatus,
+  type UpdateRequest,
+  type UpdateRequestStatus,
+} from '../../src/api/hostels';
 
 const PLACEHOLDER_IMAGE = require('../../assets/episilion_logo.png');
 
@@ -30,6 +37,16 @@ const STATUS_META: Record<HostelStatus, { label: string; icon: keyof typeof Ioni
   pending: { label: 'Awaiting verification', icon: 'time-outline' },
   approved: { label: 'Live on the site', icon: 'checkmark-circle-outline' },
   rejected: { label: 'Not approved', icon: 'close-circle-outline' },
+};
+
+/** A sub admin's request to change an existing hostel. */
+const REQUEST_META: Record<
+  UpdateRequestStatus,
+  { label: string; hint: string; icon: keyof typeof Ionicons.glyphMap }
+> = {
+  pending: { label: 'PENDING', hint: 'Awaiting super admin review', icon: 'time-outline' },
+  approved: { label: 'APPROVED', hint: 'You can now edit this hostel', icon: 'checkmark-circle-outline' },
+  rejected: { label: 'REJECTED', hint: 'Update not approved', icon: 'close-circle-outline' },
 };
 
 const formatPrice = (min: number | null, max: number | null) => {
@@ -51,16 +68,33 @@ const formatDate = (iso: string | null) => {
 
 export default function SubmissionsScreen() {
   const colors = useThemeStore((state) => state.colors);
+  const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
   const [hostels, setHostels] = useState<HostelListItem[]>([]);
+  const [requests, setRequests] = useState<UpdateRequest[]>([]);
   const [filter, setFilter] = useState<Filter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  // Reset to the requested filter each time the screen is opened from a stat card.
+  useFocusEffect(
+    useCallback(() => {
+      if (filterParam === 'pending' || filterParam === 'approved' || filterParam === 'rejected' || filterParam === 'all') {
+        setFilter(filterParam);
+      }
+    }, [filterParam]),
+  );
+
   const load = useCallback(async () => {
     try {
       setError('');
-      setHostels(await listHostels('all'));
+      const [submissions, updateRequests] = await Promise.all([
+        listHostels('all'),
+        // A failed request list should not hide the submissions.
+        listUpdateRequests('all').catch(() => [] as UpdateRequest[]),
+      ]);
+      setHostels(submissions);
+      setRequests(updateRequests);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Failed to load your submissions');
     }
@@ -92,14 +126,30 @@ export default function SubmissionsScreen() {
     return colors.accent;
   };
 
-  const visible = filter === 'all' ? hostels : hostels.filter((h) => h.status === filter);
-
-  const counts = {
-    all: hostels.length,
-    pending: hostels.filter((h) => h.status === 'pending').length,
-    approved: hostels.filter((h) => h.status === 'approved').length,
-    rejected: hostels.filter((h) => h.status === 'rejected').length,
+  const requestColor = (status: UpdateRequestStatus) => {
+    if (status === 'approved') return colors.success;
+    if (status === 'rejected') return colors.error;
+    return colors.accent;
   };
+
+  const visibleHostels = filter === 'all' ? hostels : hostels.filter((h) => h.status === filter);
+  const visibleRequests = filter === 'all' ? requests : requests.filter((r) => r.status === filter);
+
+  // "Pending" counts both new submissions and requested updates.
+  const counts = {
+    all: hostels.length + requests.length,
+    pending:
+      hostels.filter((h) => h.status === 'pending').length +
+      requests.filter((r) => r.status === 'pending').length,
+    approved:
+      hostels.filter((h) => h.status === 'approved').length +
+      requests.filter((r) => r.status === 'approved').length,
+    rejected:
+      hostels.filter((h) => h.status === 'rejected').length +
+      requests.filter((r) => r.status === 'rejected').length,
+  };
+
+  const hasNothing = visibleHostels.length === 0 && visibleRequests.length === 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -171,7 +221,7 @@ export default function SubmissionsScreen() {
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
-        ) : visible.length === 0 ? (
+        ) : hasNothing ? (
           <View style={styles.stateBox}>
             <Ionicons name="document-text-outline" size={44} color={colors.textTertiary} />
             <Text style={[styles.stateText, { color: colors.textSecondary }]}>
@@ -181,7 +231,112 @@ export default function SubmissionsScreen() {
             </Text>
           </View>
         ) : (
-          visible.map((hostel) => (
+          <>
+            {/* Hostels this sub admin submitted, plus the ones requested for update. */}
+            {visibleRequests.length > 0 ? (
+              <>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  REQUESTED UPDATES
+                </Text>
+                {visibleRequests.map((request) => (
+                  <View
+                    key={`request-${request.id}`}
+                    style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <View style={styles.cardTop}>
+                      <Image
+                        source={
+                          request.main_image ? { uri: request.main_image } : PLACEHOLDER_IMAGE
+                        }
+                        style={styles.thumbnail}
+                      />
+                      <View style={styles.cardInfo}>
+                        <Text style={[styles.hostelName, { color: colors.text }]} numberOfLines={2}>
+                          {request.hostel_name}
+                        </Text>
+                        <Text
+                          style={[styles.hostelLocation, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          Requested an update
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.statusRow, { borderTopColor: colors.divider }]}>
+                      <View
+                        style={[styles.statusBadge, { backgroundColor: requestColor(request.status) }]}
+                      >
+                        <Ionicons
+                          name={REQUEST_META[request.status].icon}
+                          size={13}
+                          color="#FFFFFF"
+                        />
+                        <Text style={styles.statusBadgeText}>
+                          {REQUEST_META[request.status].label}
+                        </Text>
+                      </View>
+                      <Text style={[styles.statusHint, { color: colors.textSecondary }]}>
+                        {REQUEST_META[request.status].hint}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.reasonBox, { backgroundColor: colors.inputBackground }]}>
+                      <Text style={[styles.reasonLabel, { color: colors.primary }]}>
+                        YOUR REASON
+                      </Text>
+                      <Text style={[styles.reasonText, { color: colors.text }]}>
+                        {request.reason}
+                      </Text>
+                    </View>
+
+                    {request.decision_note ? (
+                      <View style={[styles.reasonBox, { backgroundColor: colors.inputBackground }]}>
+                        <Text style={[styles.reasonLabel, { color: colors.textSecondary }]}>
+                          SUPER ADMIN
+                        </Text>
+                        <Text style={[styles.reasonText, { color: colors.text }]}>
+                          {request.decision_note}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {request.status === 'approved' ? (
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          router.push(`/(sub-admin)/edit-hostel?id=${request.hostel_id}`)
+                        }
+                        style={[styles.editButton, { backgroundColor: colors.success }]}
+                      >
+                        <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+                        <Text style={styles.editButtonText}>Edit Hostel Details</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    <View style={styles.metaRow}>
+                      <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                        Requested {formatDate(request.created_at)}
+                      </Text>
+                      {request.reviewed_at ? (
+                        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                          Reviewed {formatDate(request.reviewed_at)}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : null}
+
+            {visibleHostels.length > 0 ? (
+              <>
+                {visibleRequests.length > 0 ? (
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                    HOSTELS SUBMITTED
+                  </Text>
+                ) : null}
+                {visibleHostels.map((hostel) => (
             <View
               key={hostel.hostel_id}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -233,7 +388,10 @@ export default function SubmissionsScreen() {
                 </Text>
               </View>
             </View>
-          ))
+          ))}
+              </>
+            ) : null}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -256,6 +414,28 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     marginTop: 4,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   filtersGrid: {
     flexDirection: 'row',

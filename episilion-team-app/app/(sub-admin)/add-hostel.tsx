@@ -476,7 +476,7 @@ export default function AddHostelScreen() {
                     borderColor: colors.border,
                   },
                 ]}
-                placeholder="TYPE OF ROOM"
+                placeholder="4 in 1"
                 placeholderTextColor={colors.placeholder}
                 value={room.type}
                 onChangeText={(text) => {
