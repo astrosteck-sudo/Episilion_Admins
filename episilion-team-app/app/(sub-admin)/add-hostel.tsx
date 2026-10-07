@@ -10,6 +10,7 @@ import {
   Switch,
   PermissionsAndroid,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
@@ -19,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useThemeStore } from "../../src/store/themeStore";
 import { router } from "expo-router";
 import { Input } from "../../src/components/Input";
-import { Button } from "../../src/components/Button";
+import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { createHostel } from "../../src/api/hostels";
 import { useAppAlert } from "../../src/components/AppAlert";
 
@@ -240,6 +241,8 @@ export default function AddHostelScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
+      <ScreenHeader title="Add Hostel" />
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Progress */}
         <View style={styles.progressContainer}>
@@ -763,15 +766,47 @@ export default function AddHostelScreen() {
 
         {/* Submit Button */}
         <View style={styles.footer}>
-          <Button
-            title={
-              isSubmitting
-                ? "Submitting..."
-                : "Submit For Approval (Complete & Submit)"
-            }
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={handleSubmit}
-            loading={isSubmitting}
-          />
+            disabled={isSubmitting}
+            accessibilityRole="button"
+            accessibilityLabel="Submit hostel for approval"
+            accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
+            style={[
+              styles.submitButton,
+              { backgroundColor: colors.success, shadowColor: colors.success },
+              isSubmitting && styles.submitButtonDisabled,
+            ]}
+          >
+            <View style={styles.submitInner}>
+              <View style={styles.submitSheen} pointerEvents="none" />
+
+              <View style={styles.submitIconWrap}>
+                {isSubmitting ? (
+                  <ActivityIndicator color={colors.success} size="small" />
+                ) : (
+                  <Ionicons name="shield-checkmark" size={22} color={colors.success} />
+                )}
+              </View>
+
+              <View style={styles.submitTextWrap}>
+                <Text style={styles.submitTitle}>
+                  {isSubmitting ? "Submitting..." : "Submit for Approval"}
+                </Text>
+                <Text style={styles.submitSubtitle}>
+                  {isSubmitting
+                    ? "Sending your hostel to the super admin"
+                    : "Send to the super admin for review"}
+                </Text>
+              </View>
+
+              {!isSubmitting && (
+                <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+              )}
+            </View>
+          </TouchableOpacity>
+
           <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
             Required fields must be completed before submission.
           </Text>
@@ -785,18 +820,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  backText: {
-    fontSize: 24,
-    fontWeight: "600",
-  },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 20,
     paddingBottom: 32,
   },
   progressContainer: {
@@ -1034,11 +1059,69 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   footer: {
-    marginTop: 16,
+    marginTop: 24,
+  },
+  submitButton: {
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+      default: {},
+    }),
+  },
+  /** Clips the sheen to the rounded corners without clipping the outer shadow. */
+  submitInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    overflow: "hidden",
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  /** Top highlight that gives the solid button a glossy, premium finish. */
+  submitSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "50%",
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
+  },
+  submitIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submitTextWrap: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  submitTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  submitSubtitle: {
+    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 12,
+    marginTop: 2,
   },
   footerNote: {
     fontSize: 12,
     textAlign: "center",
-    marginTop: 8,
+    marginTop: 12,
   },
 });

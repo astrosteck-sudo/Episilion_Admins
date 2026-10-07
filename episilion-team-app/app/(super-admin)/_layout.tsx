@@ -45,6 +45,10 @@ export default function SuperAdminLayout() {
           headerShown: false,
         }}
       />
+      <Tabs.Screen
+        name="security"
+        options={{ href: null, tabBarStyle: { display: 'none' } }}
+      />
     </Tabs>
   );
 }

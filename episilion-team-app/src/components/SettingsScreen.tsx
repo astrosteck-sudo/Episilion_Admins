@@ -298,7 +298,10 @@ export default function SettingsScreen() {
             iconColor={colors.secondary}
             iconBackground={colors.backgroundSecondary}
             label="Security"
-            description="Password and sessions"
+            description="Change your password"
+            onPress={() =>
+              router.push(role === 'super_admin' ? '/(super-admin)/security' : '/(sub-admin)/security')
+            }
           />
           <SettingRow
             icon="log-out-outline"

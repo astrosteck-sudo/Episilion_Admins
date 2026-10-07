@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import { TabBarIcon, useTabScreenOptions } from '../../src/components/AppTabs';
+import { Tabs } from "expo-router";
+import { TabBarIcon, useTabScreenOptions } from "../../src/components/AppTabs";
 
 export default function SubAdminLayout() {
   const screenOptions = useTabScreenOptions();
@@ -9,17 +9,23 @@ export default function SubAdminLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           headerShown: false,
           tabBarIcon: ({ color, size, focused }) => (
-            <TabBarIcon name="home-outline" focusedName="home" color={color} size={size} focused={focused} />
+            <TabBarIcon
+              name="home-outline"
+              focusedName="home"
+              color={color}
+              size={size}
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="submissions"
         options={{
-          title: 'Submissions',
+          title: "Submissions",
           headerShown: false,
           tabBarIcon: ({ color, size, focused }) => (
             <TabBarIcon
@@ -35,7 +41,7 @@ export default function SubAdminLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: "Settings",
           headerShown: false,
           tabBarIcon: ({ color, size, focused }) => (
             <TabBarIcon
@@ -48,8 +54,31 @@ export default function SubAdminLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="add-hostel" options={{ href: null }} />
-      <Tabs.Screen name="update-hostel" options={{ href: null }} />
+      {/* Hidden from the tab bar and rendered full-screen, without the bar. */}
+      <Tabs.Screen
+        name="add-hostel"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="update-hostel"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="security"
+        options={{
+          headerShown: false,
+          href: null,
+          tabBarStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }

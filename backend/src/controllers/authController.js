@@ -73,3 +73,54 @@ exports.me = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+const MIN_PASSWORD_LENGTH = 8;
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res
+        .status(400)
+        .json({ message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+
+    if (newPassword === currentPassword) {
+      return res
+        .status(400)
+        .json({ message: 'New password must be different from the current password' });
+    }
+
+    const [rows] = await db.query(
+      'SELECT id, password_hash, status FROM team_users WHERE id = ?',
+      [req.teamUser.id]
+    );
+    const user = rows[0];
+    if (!user || user.status !== 'active') {
+      return res.status(401).json({ message: 'Account unavailable' });
+    }
+
+    const ok = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await db.query('UPDATE team_users SET password_hash = ? WHERE id = ?', [
+      passwordHash,
+      user.id,
+    ]);
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
