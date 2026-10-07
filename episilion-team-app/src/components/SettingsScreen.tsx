@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -171,10 +171,10 @@ export default function SettingsScreen() {
   const setNotificationsEnabled = useNotificationStore((state) => state.setEnabled);
   const { alert } = useAppAlert();
 
-  const [pushSupported, setPushSupported] = useState(true);
+  /** Runtime capability, so it never changes while the screen is mounted. */
+  const pushSupported = isPushSupported();
 
   useEffect(() => {
-    setPushSupported(isPushSupported());
     loadPreference();
   }, [loadPreference]);
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -128,32 +128,41 @@ export default function ReviewDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { alert, prompt } = useAppAlert();
   const [review, setReview] = useState<ReviewDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(Boolean(id));
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(id ? '' : 'No hostel selected.');
   const [activeImage, setActiveImage] = useState(0);
-
-  const load = useCallback(async () => {
-    if (!id) {
-      setError('No hostel selected.');
-      setIsLoading(false);
-      return;
-    }
-    try {
-      setError('');
-      setIsLoading(true);
-      const data = await getHostel(String(id));
-      setReview(toReviewDetail(data));
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Failed to load hostel');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
+  const [reloadKey, setReloadKey] = useState(0);
 
   React.useEffect(() => {
-    load();
-  }, [load]);
+    if (!id) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getHostel(String(id));
+        if (cancelled) return;
+        setReview(toReviewDetail(data));
+        setError('');
+      } catch (err: any) {
+        if (cancelled) return;
+        setError(err?.response?.data?.message || err?.message || 'Failed to load hostel');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, reloadKey]);
+
+  const retry = () => {
+    if (!id) return;
+    setIsLoading(true);
+    setError('');
+    setReloadKey((key) => key + 1);
+  };
 
   const mapUri = review?.latitude && review?.longitude
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${review.latitude},${review.longitude}&zoom=15&size=600x400&maptype=roadmap&markers=color:red%7Clabel:C%7C${review.latitude},${review.longitude}&key=AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk`
@@ -260,7 +269,7 @@ export default function ReviewDetailScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            onPress={load}
+            onPress={retry}
           >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>

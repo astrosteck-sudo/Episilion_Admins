@@ -1,9 +1,10 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { STORAGE_KEYS } from '../constants';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+// eslint-disable-next-line import/no-named-as-default-member -- axios.create is the documented API; the named `create` export is unrelated.
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: {

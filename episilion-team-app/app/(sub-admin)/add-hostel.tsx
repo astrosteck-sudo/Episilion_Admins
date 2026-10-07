@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,9 @@ import {
   TextInput,
   Image,
   Switch,
-  PermissionsAndroid,
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -42,9 +40,13 @@ export default function AddHostelScreen() {
   const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [locationError, setLocationError] = useState("");
-  const [showMap, setShowMap] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const webViewRef = useRef(null);
+
+  /**
+   * The map is shown once both coordinates are present. Deriving this instead of
+   * mirroring it in state keeps the map in sync when the fields are cleared.
+   */
+  const showMap = Boolean(latitude && longitude);
 
   const takePhoto = async () => {
     let { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -137,14 +139,7 @@ export default function AddHostelScreen() {
         alert("Permission Denied", "Media library permission is required to select photos.");
       }
     })();
-  }, []);
-
-  useEffect(() => {
-    // Show map when both coordinates are available
-    if (latitude && longitude) {
-      setShowMap(true);
-    }
-  }, [latitude, longitude]);
+  }, [alert]);
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities((prev) =>
@@ -224,7 +219,6 @@ export default function AddHostelScreen() {
       setWhatsappNumber("");
       setEmail("");
       setPhoto(null);
-      setShowMap(false);
       setSectionsCompleted(0);
     } catch (error: any) {
       const message =
@@ -325,7 +319,6 @@ export default function AddHostelScreen() {
                 setLatitude(String(locationData.coords.latitude));
                 setLongitude(String(locationData.coords.longitude));
                 setLocationError("");
-                setShowMap(true);
               } catch (error) {
                 setLocationError("Failed to get current location");
                 alert(
@@ -361,9 +354,6 @@ export default function AddHostelScreen() {
                 value={latitude}
                 onChangeText={(text) => {
                   setLatitude(text);
-                  if (text && longitude) {
-                    setShowMap(true);
-                  }
                 }}
                 placeholder="e.g. 5.6037"
                 placeholderTextColor={colors.placeholder}
@@ -390,9 +380,6 @@ export default function AddHostelScreen() {
                 value={longitude}
                 onChangeText={(text) => {
                   setLongitude(text);
-                  if (latitude && text) {
-                    setShowMap(true);
-                  }
                 }}
                 placeholder="e.g. -0.1870"
                 placeholderTextColor={colors.placeholder}
@@ -415,7 +402,7 @@ export default function AddHostelScreen() {
                 {locationError}
               </Text>
             </View>
-          ) : showMap && latitude && longitude ? (
+          ) : showMap ? (
             <View
               style={[
                 styles.mapPlaceholder,

@@ -131,7 +131,7 @@ export default function SubAdminHomeScreen() {
 
             <Text style={styles.actionTitleOnFill}>Add New Hostel</Text>
             <Text style={styles.actionDescriptionOnFill}>
-              Visit a hostel that isn't listed yet and submit its details, room pricing
+              Visit a hostel that isn&apos;t listed yet and submit its details, room pricing
               and verified photos for review.
             </Text>
 

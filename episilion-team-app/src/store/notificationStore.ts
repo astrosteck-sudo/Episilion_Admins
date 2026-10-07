@@ -18,6 +18,7 @@ function getNotifications(): NotificationsModule | null {
   if (moduleLoadAttempted) return notificationsModule;
   moduleLoadAttempted = true;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- must stay lazy: importing expo-notifications eagerly throws in Expo Go on Android.
     notificationsModule = require('expo-notifications') as NotificationsModule;
   } catch {
     notificationsModule = null;

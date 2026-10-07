@@ -1,7 +1,6 @@
-import { useEffect } from 'react';
-import { View, Platform, StatusBar as RNStatusBar } from 'react-native';
-import { Stack } from 'expo-router';
-import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import { StatusBar as RNStatusBar } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { ThemeProvider } from '../src/providers/ThemeProvider';
 import { AppAlertProvider } from '../src/components/AppAlert';
 import { useAuthStore } from '../src/store/authStore';
@@ -14,7 +13,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     loadAuth();
-  }, []);
+  }, [loadAuth]);
 
   useEffect(() => {
     if (!user) {

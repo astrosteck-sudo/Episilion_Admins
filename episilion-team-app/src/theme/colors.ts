@@ -64,5 +64,3 @@ export type ColorPalette = {
   inputBackground: string;
   placeholder: string;
 };
-
-export type Colors = ColorPalette;
