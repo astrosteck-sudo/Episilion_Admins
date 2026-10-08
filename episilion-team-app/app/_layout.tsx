@@ -1,19 +1,31 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar as RNStatusBar } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '../src/providers/ThemeProvider';
 import { AppAlertProvider } from '../src/components/AppAlert';
+import { SplashOverlay } from '../src/components/SplashOverlay';
 import { useAuthStore } from '../src/store/authStore';
 import { useThemeStore } from '../src/store/themeStore';
+
+// Keep the native splash visible until the JS splash overlay is mounted, so the
+// hand-off between the two is seamless.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootLayoutNav() {
   const router = useRouter();
   const { user, role, loadAuth } = useAuthStore();
   const { colorScheme } = useThemeStore();
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     loadAuth();
   }, [loadAuth]);
+
+  // The JS splash overlay is now mounted, so the native splash can be removed.
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -24,6 +36,10 @@ function RootLayoutNav() {
       router.replace('/(sub-admin)');
     }
   }, [user, role, router]);
+
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+  }, []);
 
   return (
     <>
@@ -43,6 +59,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(sub-admin)" options={{ headerShown: false }} />
         <Stack.Screen name="(super-admin)" options={{ headerShown: false }} />
       </Stack>
+      {showSplash ? <SplashOverlay onFinish={handleSplashFinish} /> : null}
     </>
   );
 }

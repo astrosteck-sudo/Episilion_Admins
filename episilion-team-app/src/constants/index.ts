@@ -1,4 +1,4 @@
-export const APP_NAME = 'Episilion Hostels';
+export const APP_NAME = 'Episilion Admins';
 
 export const API_TIMEOUT = 30000;
 

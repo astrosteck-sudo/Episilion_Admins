@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "episilion-team-app",
+    "name": "Episilion Admins",
     "slug": "episilion-team-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -26,10 +26,14 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/episilion_logo.png",
-          "imageWidth": 240,
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#000000"
+          }
         }
       ]
     ],

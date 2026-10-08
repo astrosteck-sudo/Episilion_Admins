@@ -61,27 +61,27 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <TouchableOpacity
+        onPress={toggleTheme}
+        style={[styles.themeToggle, { backgroundColor: colors.inputBackground }]}
+        hitSlop={8}
+      >
+        <Ionicons
+          name={colorScheme === 'dark' ? 'sunny-outline' : 'moon-outline'}
+          size={18}
+          color={colors.textSecondary}
+        />
+      </TouchableOpacity>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity
-            onPress={toggleTheme}
-            style={[styles.themeToggle, { backgroundColor: colors.inputBackground }]}
-            hitSlop={8}
-          >
-            <Ionicons
-              name={colorScheme === 'dark' ? 'sunny-outline' : 'moon-outline'}
-              size={18}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-
           <View style={styles.header}>
             <Image
               source={require('../../assets/episilion_logo.png')}
@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 28,
+    zIndex: 10,
     width: 38,
     height: 38,
     borderRadius: 19,

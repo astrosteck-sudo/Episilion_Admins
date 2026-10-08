@@ -329,7 +329,7 @@ export default function SettingsScreen() {
             icon="business-outline"
             iconColor={colors.success}
             iconBackground={colors.backgroundSecondary}
-            label="Episilion Hostels"
+            label="Episilion Admins"
             description="Admin console"
             isLast
           />
