@@ -430,7 +430,7 @@ export default function UpdateRequestsScreen() {
                       ) : (
                         <>
                           <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                          <Text style={styles.approveText}>Apply Changes</Text>
+                          <Text style={styles.approveText}>Apply</Text>
                         </>
                       )}
                     </TouchableOpacity>
