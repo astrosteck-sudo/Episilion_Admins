@@ -6,8 +6,6 @@ const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
 
 exports.login = async (req, res) => {
-  console.log('Login route hit');
-
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {

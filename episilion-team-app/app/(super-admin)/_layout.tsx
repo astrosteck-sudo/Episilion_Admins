@@ -23,6 +23,22 @@ export default function SuperAdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="sub-admins"
+        options={{
+          title: 'Sub-admins',
+          headerShown: false,
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon
+              name="people-outline"
+              focusedName="people"
+              color={color}
+              size={size}
+              focused={focused}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
@@ -47,11 +63,11 @@ export default function SuperAdminLayout() {
       />
       <Tabs.Screen
         name="security"
-        options={{ href: null, tabBarStyle: { display: 'none' } }}
+        options={{ href: null, headerShown: false, tabBarStyle: { display: 'none' } }}
       />
       <Tabs.Screen
         name="update-requests"
-        options={{ href: null, tabBarStyle: { display: 'none' } }}
+        options={{ href: null, headerShown: false, tabBarStyle: { display: 'none' } }}
       />
     </Tabs>
   );
