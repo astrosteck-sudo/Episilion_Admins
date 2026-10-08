@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
-import { useThemeStore } from '../store/themeStore';
+import { useEffect } from "react";
+import { useColorScheme } from "react-native";
+import { useThemeStore } from "../store/themeStore";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const loadTheme = useThemeStore((state) => state.loadTheme);
-  const setSystemColorScheme = useThemeStore((state) => state.setSystemColorScheme);
+  const setSystemColorScheme = useThemeStore(
+    (state) => state.setSystemColorScheme,
+  );
   const systemColorScheme = useColorScheme();
 
   useEffect(() => {
@@ -12,7 +14,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [loadTheme]);
 
   useEffect(() => {
-    if (systemColorScheme === 'light' || systemColorScheme === 'dark') {
+    if (systemColorScheme === "light" || systemColorScheme === "dark") {
       setSystemColorScheme(systemColorScheme);
     }
   }, [systemColorScheme, setSystemColorScheme]);
