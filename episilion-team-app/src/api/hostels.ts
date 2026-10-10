@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { apiClient } from './client';
 
 export type HostelStatus = 'pending' | 'approved' | 'rejected';
@@ -314,6 +315,30 @@ function guessMimeType(uri: string) {
   return 'image/jpeg';
 }
 
+/**
+ * Appends the photo to the multipart body.
+ *
+ * React Native accepts a `{ uri, name, type }` descriptor, but the browser's
+ * `FormData` only understands `Blob`/`File` — passing the descriptor there would
+ * upload the literal string `[object Object]`. On web the picker hands back a
+ * `blob:` URL, so the blob is fetched back out first.
+ */
+async function appendPhoto(form: FormData, photoUri: string) {
+  const name = `hostel-${Date.now()}.jpg`;
+
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(photoUri)).blob();
+    form.append('photos', blob, name);
+    return;
+  }
+
+  form.append('photos', {
+    uri: photoUri,
+    name,
+    type: guessMimeType(photoUri),
+  } as unknown as Blob);
+}
+
 export async function createHostel(payload: NewHostelPayload) {
   const form = new FormData();
 
@@ -339,14 +364,11 @@ export async function createHostel(payload: NewHostelPayload) {
   form.append('perks', JSON.stringify(payload.perks));
   form.append('installment_allowed', payload.allowInstallments ? 'true' : 'false');
 
-  form.append('photos', {
-    uri: payload.photoUri,
-    name: `hostel-${Date.now()}.jpg`,
-    type: guessMimeType(payload.photoUri),
-  } as unknown as Blob);
+  await appendPhoto(form, payload.photoUri);
 
   const res = await apiClient.post('/api/team/hostels', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    // The Content-Type is left unset so axios keeps the FormData intact and the
+    // runtime adds the multipart boundary itself.
     timeout: 60000,
   });
   return res.data;

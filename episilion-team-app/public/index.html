@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!--
+      `viewport-fit=cover` is what makes `react-native-safe-area-context` report
+      real insets on iOS, so the tab bar and headers clear the notch and home
+      indicator. `interactive-widget=resizes-content` keeps the keyboard from
+      covering focused inputs.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+
+    <!-- Standalone launch when added to the iOS home screen. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Episilion" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <title>%WEB_TITLE%</title>
+
+    <!-- The `react-native-web` recommended style reset. -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+
+    <style id="episilion-web">
+      body {
+        margin: 0;
+        padding: 0;
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      /* iOS Safari zooms the page when a focused input is smaller than 16px. */
+      input,
+      textarea,
+      select {
+        font-size: 16px;
+      }
+
+      button,
+      [role='button'],
+      a {
+        touch-action: manipulation;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+
+    <script>
+      // Register the app-shell service worker. Skipped on localhost so the dev
+      // server is never shadowed by a cached shell.
+      if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {
+            /* offline support is optional */
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

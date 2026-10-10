@@ -80,7 +80,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   rightAction: {
     marginLeft: 8,

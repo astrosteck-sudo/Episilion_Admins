@@ -475,7 +475,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
     height: '100%',
   },
   emptyCard: {
@@ -550,7 +551,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reasonInput: {
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
     minHeight: 110,
     lineHeight: 20,
   },

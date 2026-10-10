@@ -243,7 +243,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   signInButton: {
     flexDirection: 'row',

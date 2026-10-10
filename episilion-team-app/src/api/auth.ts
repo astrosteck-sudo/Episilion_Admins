@@ -16,6 +16,11 @@ export async function loginRequest(email: string, password: string) {
   return res.data;
 }
 
+export async function logoutRequest() {
+  const res = await apiClient.post<{ message: string }>('/api/team/auth/logout');
+  return res.data;
+}
+
 export async function changePasswordRequest(currentPassword: string, newPassword: string) {
   const res = await apiClient.post<{ message: string }>('/api/team/auth/change-password', {
     currentPassword,

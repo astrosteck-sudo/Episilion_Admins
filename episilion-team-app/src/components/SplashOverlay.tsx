@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Animated, Easing, Image, Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 const LIGHT_ICON = require('../../assets/splash-icon.png');
 const DARK_ICON = require('../../assets/splash-icon-dark.png');
@@ -30,6 +30,9 @@ export function SplashOverlay({ onFinish }: { onFinish: () => void }) {
   const deviceScheme = useColorScheme();
   const palette = deviceScheme === 'dark' ? Palette.dark : Palette.light;
 
+  // react-native-web has no native animation driver and warns when asked for one.
+  const useNativeDriver = Platform.OS !== 'web';
+
   const [fade] = useState(() => new Animated.Value(1));
   const [logoOpacity] = useState(() => new Animated.Value(0));
   const [logoScale] = useState(() => new Animated.Value(0.9));
@@ -43,27 +46,27 @@ export function SplashOverlay({ onFinish }: { onFinish: () => void }) {
           toValue: 1,
           duration: 420,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(logoScale, {
           toValue: 1,
           duration: 700,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 480,
           delay: 180,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(textShift, {
           toValue: 0,
           duration: 560,
           delay: 180,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ]),
       Animated.delay(560),
@@ -71,7 +74,7 @@ export function SplashOverlay({ onFinish }: { onFinish: () => void }) {
         toValue: 0,
         duration: 400,
         easing: Easing.in(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]);
 
@@ -82,7 +85,7 @@ export function SplashOverlay({ onFinish }: { onFinish: () => void }) {
     });
 
     return () => animation.stop();
-  }, [fade, logoOpacity, logoScale, textOpacity, textShift, onFinish]);
+  }, [fade, logoOpacity, logoScale, textOpacity, textShift, onFinish, useNativeDriver]);
 
   return (
     <Animated.View

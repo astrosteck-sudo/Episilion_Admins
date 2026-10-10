@@ -1,6 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { login, me, changePassword } = require('../controllers/authController');
+const { login, logout, me, changePassword } = require('../controllers/authController');
 const { verifyTeamToken } = require('../middleware/teamAuth');
 
 const router = express.Router();
@@ -18,6 +18,7 @@ const passwordLimiter = rateLimit({
 });
 
 router.post('/login', loginLimiter, login);
+router.post('/logout', logout);
 router.get('/me', verifyTeamToken, me);
 router.post('/change-password', verifyTeamToken, passwordLimiter, changePassword);
 

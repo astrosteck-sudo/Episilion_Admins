@@ -7,12 +7,14 @@ import {
   ScrollView,
   Switch,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore, isPushSupported } from '../store/notificationStore';
+import { logoutRequest } from '../api/auth';
 import { useAppAlert } from './AppAlert';
 import { router } from 'expo-router';
 
@@ -173,6 +175,7 @@ export default function SettingsScreen() {
 
   /** Runtime capability, so it never changes while the screen is mounted. */
   const pushSupported = isPushSupported();
+  const isWeb = Platform.OS === 'web';
 
   useEffect(() => {
     loadPreference();
@@ -185,7 +188,14 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clear the httpOnly cookie server-side; local state is cleared regardless so
+    // a network failure can never leave the user stuck signed in.
+    try {
+      await logoutRequest();
+    } catch {
+      /* the local session is cleared below either way */
+    }
     clearAuth();
     router.replace('/(auth)/login');
   };
@@ -283,15 +293,21 @@ export default function SettingsScreen() {
             iconBackground={colors.backgroundSecondary}
             label="Push Notifications"
             description={
-              pushSupported
-                ? 'Alerts for reviews and approvals'
-                : 'Requires a development build'
+              isWeb
+                ? 'Not available in the web app'
+                : pushSupported
+                  ? 'Alerts for reviews and approvals'
+                  : 'Requires a development build'
             }
-            toggle={{
-              value: notificationsEnabled,
-              onChange: handleToggleNotifications,
-              disabled: notificationsUpdating,
-            }}
+            toggle={
+              isWeb
+                ? undefined
+                : {
+                    value: notificationsEnabled,
+                    onChange: handleToggleNotifications,
+                    disabled: notificationsUpdating,
+                  }
+            }
           />
           <SettingRow
             icon="lock-closed-outline"
