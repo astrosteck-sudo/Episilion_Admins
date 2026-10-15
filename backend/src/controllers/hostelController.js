@@ -249,10 +249,17 @@ exports.createHostel = async (req, res) => {
       ]);
     }
 
-    const priceMin = num(body.price_min);
-    const priceMax = num(body.price_max);
+    // The pricing row mirrors the rooms: the cheapest and the most expensive room
+    // define the hostel's range. The client sends room prices, not price_min /
+    // price_max, so derive the range from the rooms that were just inserted.
+    const roomPrices = roomTypes
+      .map((room) => room.price)
+      .filter((price) => price !== null && price !== undefined);
+    const priceMin = roomPrices.length ? Math.min(...roomPrices) : num(body.price_min);
+    const priceMax = roomPrices.length ? Math.max(...roomPrices) : num(body.price_max);
     const installmentAllowed = bool(body.installment_allowed);
     const hasPricing =
+      roomTypes.length > 0 ||
       priceMin !== null ||
       priceMax !== null ||
       str(body.billing_period) ||
@@ -271,12 +278,12 @@ exports.createHostel = async (req, res) => {
           hostelId,
           priceMin,
           priceMax,
-          str(body.billing_period),
+          str(body.billing_period) || 'Per Semester',
           installmentAllowed,
           num(body.utilities_fee),
           num(body.maintenance_fee),
           num(body.caution_deposit),
-          str(body.refund_policy),
+          str(body.refund_policy) || 'No Refunds',
         ]
       );
     }
@@ -1217,17 +1224,41 @@ async function applyChanges(conn, hostelId, changes) {
     }
   }
 
-  // pricing
+  // rooms: replaced wholesale when the form sends a room list. Done before
+  // pricing so the price range below can be derived from the new rooms.
+  if (Object.prototype.hasOwnProperty.call(changes, 'rooms')) {
+    await conn.query('DELETE FROM rooms WHERE hostel_id = ?', [hostelId]);
+    for (const room of changes.rooms) {
+      await conn.query(
+        'INSERT INTO rooms (hostel_id, room_type, price, available_rooms) VALUES (?, ?, ?, ?)',
+        [hostelId, room.type, room.price, null]
+      );
+    }
+    applied.push(`rooms (${changes.rooms.length})`);
+  }
+
+  // pricing: the range always mirrors the rooms, so a room change recomputes
+  // price_min / price_max even when the form did not send them explicitly.
   const pricingCols = [
     'price_min', 'price_max', 'billing_period', 'installment_allowed',
     'utilities_fee', 'maintenance_fee', 'caution_deposit', 'refund_policy',
   ];
+  const pricingChanges = { ...changes };
+  if (Object.prototype.hasOwnProperty.call(changes, 'rooms')) {
+    const roomPrices = changes.rooms
+      .map((room) => room.price)
+      .filter((price) => price !== null && price !== undefined);
+    if (roomPrices.length) {
+      pricingChanges.price_min = Math.min(...roomPrices);
+      pricingChanges.price_max = Math.max(...roomPrices);
+    }
+  }
   const pricingSets = [];
   const pricingVals = [];
   for (const col of pricingCols) {
-    if (Object.prototype.hasOwnProperty.call(changes, col)) {
+    if (Object.prototype.hasOwnProperty.call(pricingChanges, col)) {
       pricingSets.push(`${col} = ?`);
-      pricingVals.push(changes[col]);
+      pricingVals.push(pricingChanges[col]);
       applied.push(`pricing.${col}`);
     }
   }
@@ -1239,24 +1270,12 @@ async function applyChanges(conn, hostelId, changes) {
         [...pricingVals, hostelId]
       );
     } else {
-      const cols = pricingCols.filter((c) => Object.prototype.hasOwnProperty.call(changes, c));
+      const cols = pricingCols.filter((c) => Object.prototype.hasOwnProperty.call(pricingChanges, c));
       await conn.query(
         `INSERT INTO pricing (hostel_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`,
-        [hostelId, ...cols.map((c) => changes[c])]
+        [hostelId, ...cols.map((c) => pricingChanges[c])]
       );
     }
-  }
-
-  // rooms: replaced wholesale when the form sends a room list.
-  if (Object.prototype.hasOwnProperty.call(changes, 'rooms')) {
-    await conn.query('DELETE FROM rooms WHERE hostel_id = ?', [hostelId]);
-    for (const room of changes.rooms) {
-      await conn.query(
-        'INSERT INTO rooms (hostel_id, room_type, price, available_rooms) VALUES (?, ?, ?, ?)',
-        [hostelId, room.type, room.price, null]
-      );
-    }
-    applied.push(`rooms (${changes.rooms.length})`);
   }
 
   // perks are mirrored into amenities (card subset) and furnishing (full list).
