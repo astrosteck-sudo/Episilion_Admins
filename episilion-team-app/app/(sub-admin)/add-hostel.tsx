@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { useThemeStore } from "../../src/store/themeStore";
 import { router } from "expo-router";
 import { Input } from "../../src/components/Input";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
+import { LocationMap } from "../../src/components/LocationMap";
 import { createHostel } from "../../src/api/hostels";
 import { useAppAlert } from "../../src/components/AppAlert";
 import { isWeb } from "../../src/utils/platform";
@@ -42,12 +43,6 @@ export default function AddHostelScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [locationError, setLocationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  /**
-   * The map is shown once both coordinates are present. Deriving this instead of
-   * mirroring it in state keeps the map in sync when the fields are cleared.
-   */
-  const showMap = Boolean(latitude && longitude);
 
   const takePhoto = async () => {
     // The browser has no camera-capture API here; the file picker already offers
@@ -104,11 +99,15 @@ export default function AddHostelScreen() {
     "Free Water",
     "Free Light",
     "Security",
-    "DSTV Cable",
     "Study Room",
     "Wifi",
     "Kitchen",
     "Wardrobe",
+    "Single Bed",
+    "Air Conditioner",
+    "Free Television",
+    "Free Wifi",
+    "Free House Cleaning",
     "Fan",
   ];
 
@@ -418,46 +417,8 @@ export default function AddHostelScreen() {
                 {locationError}
               </Text>
             </View>
-          ) : showMap ? (
-            <View
-              style={[
-                styles.mapPlaceholder,
-                {
-                  backgroundColor: colors.inputBackground,
-                  borderColor: colors.border,
-                  height: 200,
-                  overflow: "hidden",
-                },
-              ]}
-            >
-              <Image
-                source={{
-                  uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x400&maptype=roadmap&markers=color:red%7Clabel:C%7C${latitude},${longitude}&key=AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk`,
-                }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
-                onError={(error) => {
-                  console.warn(
-                    "Map Image failed to load: ",
-                    error.nativeEvent.error,
-                  );
-                }}
-              />
-            </View>
           ) : (
-            <View
-              style={[
-                styles.mapPlaceholder,
-                {
-                  backgroundColor: colors.inputBackground,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.mapText, { color: colors.textSecondary }]}>
-                Map Preview
-              </Text>
-            </View>
+            <LocationMap latitude={latitude} longitude={longitude} height={200} />
           )}
         </View>
 
@@ -912,9 +873,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  mapText: {
-    fontSize: 14,
   },
   roomTypeRow: {
     flexDirection: "row",

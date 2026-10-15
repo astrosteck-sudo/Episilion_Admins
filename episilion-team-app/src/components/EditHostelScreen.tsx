@@ -15,6 +15,7 @@ import { useThemeStore } from '../../src/store/themeStore';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { useAppAlert } from '../../src/components/AppAlert';
 import { Input } from '../../src/components/Input';
+import { LocationMap } from '../../src/components/LocationMap';
 import { isIOS } from '../../src/utils/platform';
 import {
   getHostelChanges,
@@ -352,6 +353,12 @@ export default function EditHostelScreen() {
         />
         <Input label="Latitude" placeholder="e.g. 5.1234" keyboardType="numeric" value={draft.latitude} onChangeText={set('latitude')} />
         <Input label="Longitude" placeholder="e.g. -0.1234" keyboardType="numeric" value={draft.longitude} onChangeText={set('longitude')} />
+        <LocationMap
+          latitude={draft.latitude}
+          longitude={draft.longitude}
+          height={180}
+          style={styles.mapWrapper}
+        />
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>MANAGER CONTACT</Text>
         <Input label="Manager name" placeholder="Full name" value={draft.manager_name} onChangeText={set('manager_name')} />
@@ -452,6 +459,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   hint: { fontSize: 11.5, marginBottom: 8, marginLeft: 4, lineHeight: 16 },
+  mapWrapper: { marginBottom: 16 },
   pendingWrap: { paddingTop: 4 },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 16 },
   cardTitle: { fontSize: 16, fontWeight: '700' },

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../../src/store/themeStore';
 import { getHostel, approveHostel, rejectHostel, type HostelDetailResponse } from '../../src/api/hostels';
 import { useAppAlert } from '../../src/components/AppAlert';
+import { LocationMap } from '../../src/components/LocationMap';
 
 const PLACEHOLDER_IMAGE = require('../../assets/episilion_logo.png');
 
@@ -164,9 +165,7 @@ export default function ReviewDetailScreen() {
     setReloadKey((key) => key + 1);
   };
 
-  const mapUri = review?.latitude && review?.longitude
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${review.latitude},${review.longitude}&zoom=15&size=600x400&maptype=roadmap&markers=color:red%7Clabel:C%7C${review.latitude},${review.longitude}&key=AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk`
-    : null;
+  const hasCoordinates = Boolean(review?.latitude && review?.longitude);
 
   const openInMaps = () => {
     if (!review) return;
@@ -410,26 +409,15 @@ export default function ReviewDetailScreen() {
             </View>
           </View>
 
-          <View style={[styles.mapWrapper, { backgroundColor: colors.inputBackground, borderColor: colors.border }]}>
-            {mapUri ? (
-              <Image
-                source={{ uri: mapUri }}
-                style={styles.mapImage}
-                resizeMode="cover"
-                onError={(error) =>
-                  console.warn('Map Image failed to load: ', error.nativeEvent.error)
-                }
-              />
-            ) : (
-              <View style={styles.mapPlaceholder}>
-                <Text style={[styles.stateText, { color: colors.textSecondary }]}>
-                  No coordinates were submitted for this hostel.
-                </Text>
-              </View>
-            )}
-          </View>
+          <LocationMap
+            latitude={review.latitude}
+            longitude={review.longitude}
+            height={180}
+            style={styles.mapWrapper}
+            emptyText="No coordinates were submitted for this hostel."
+          />
 
-          {mapUri && (
+          {hasCoordinates && (
             <TouchableOpacity
               style={[styles.mapsButton, { borderColor: colors.primary }]}
               onPress={openInMaps}
@@ -804,10 +792,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     marginBottom: 12,
-  },
-  mapImage: {
-    width: '100%',
-    height: '100%',
   },
   mapsButton: {
     flexDirection: 'row',
