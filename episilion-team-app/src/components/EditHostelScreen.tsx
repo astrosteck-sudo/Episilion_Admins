@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { useThemeStore } from '../../src/store/themeStore';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { useAppAlert } from '../../src/components/AppAlert';
 import { Input } from '../../src/components/Input';
+import { isIOS } from '../../src/utils/platform';
 import {
   getHostelChanges,
   stageHostelChanges,
@@ -413,7 +413,7 @@ export default function EditHostelScreen() {
       <ScreenHeader title="Edit Hostel" subtitle="Changes need approval" />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={isIOS ? 'padding' : undefined}
         style={styles.flex}
       >
         <ScrollView

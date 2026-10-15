@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +16,7 @@ import { changePasswordRequest } from '../api/auth';
 import { useAppAlert } from './AppAlert';
 import { ScreenHeader } from './ScreenHeader';
 import { Input } from './Input';
+import { isIOS } from '../utils/platform';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -114,7 +114,7 @@ export default function SecurityScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={isIOS ? 'padding' : undefined}
         style={styles.flex}
       >
         <ScrollView

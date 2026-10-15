@@ -3,6 +3,7 @@ import { Platform, StyleSheet, type ColorValue } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeStore } from '../store/themeStore';
+import { isAndroid } from '../utils/platform';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -19,7 +20,7 @@ export function useTabScreenOptions() {
   const colorScheme = useThemeStore((state) => state.colorScheme);
   const insets = useSafeAreaInsets();
 
-  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 0);
+  const bottomInset = Math.max(insets.bottom, isAndroid ? 8 : 0);
 
   return {
     headerStyle: {

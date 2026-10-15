@@ -4,12 +4,6 @@ const { uploadBuffer, isConfigured } = require('../config/cloudinary');
 
 /* ---------------------------------- helpers --------------------------------- */
 
-const slugify = (value) =>
-  String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
 const num = (value) => {
   if (value === undefined || value === null || value === '') return null;
   const n = Number(value);
@@ -119,16 +113,14 @@ async function seedDefaultRules(conn, hostelId) {
   return result.affectedRows ?? 0;
 }
 
-/** Builds a unique, url friendly hostel_id (max 50 chars, matches the existing PK). */
-async function generateHostelId(conn, name) {
-  const base = slugify(name).slice(0, 40) || 'hostel';
+/** Builds a unique hostel_id as a plain UUID (36 chars, fits the VARCHAR(50) PK). */
+async function generateHostelId(conn) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const suffix = crypto.randomBytes(3).toString('hex');
-    const candidate = `${base}-${suffix}`.slice(0, 50);
+    const candidate = crypto.randomUUID();
     const [rows] = await conn.query('SELECT 1 FROM hostels WHERE hostel_id = ? LIMIT 1', [candidate]);
     if (rows.length === 0) return candidate;
   }
-  return `${base.slice(0, 33)}-${Date.now().toString(36)}`.slice(0, 50);
+  throw new Error('Could not generate a unique hostel id');
 }
 
 /* ----------------------------------- create --------------------------------- */
@@ -178,7 +170,7 @@ exports.createHostel = async (req, res) => {
       uploaded.push({ url, publicId, type: 'image' });
     }
 
-    const hostelId = await generateHostelId(conn, name);
+    const hostelId = await generateHostelId(conn);
     const roomTypes = parseRoomTypes(body.room_types || body.roomTypes);
     // The sub admin picks one list of perks; it is mirrored into both tables.
     const perks = splitPerks(parseList(body.perks || body.amenities));

@@ -21,6 +21,7 @@ import { Input } from "../../src/components/Input";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { createHostel } from "../../src/api/hostels";
 import { useAppAlert } from "../../src/components/AppAlert";
+import { isWeb } from "../../src/utils/platform";
 
 export default function AddHostelScreen() {
   const colors = useThemeStore((state) => state.colors);
@@ -49,6 +50,13 @@ export default function AddHostelScreen() {
   const showMap = Boolean(latitude && longitude);
 
   const takePhoto = async () => {
+    // The browser has no camera-capture API here; the file picker already offers
+    // "Take Photo" on iOS, so it covers both cases on web.
+    if (isWeb) {
+      await pickImage();
+      return;
+    }
+
     let { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       alert("Permission Denied", "Camera permission is required to take photos.");
@@ -68,10 +76,14 @@ export default function AddHostelScreen() {
   };
 
   const pickImage = async () => {
-    let { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      alert("Permission Denied", "Media library permission is required to select photos.");
-      return;
+    // Browsers grant file access through the picker itself, so there is no
+    // permission to request up front.
+    if (!isWeb) {
+      let { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        alert("Permission Denied", "Media library permission is required to select photos.");
+        return;
+      }
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -122,6 +134,10 @@ export default function AddHostelScreen() {
       : "";
 
   useEffect(() => {
+    // Browsers reject permission prompts that are not tied to a user gesture, so
+    // on web each permission is requested from the button that needs it instead.
+    if (isWeb) return;
+
     // Request location and camera permissions when component mounts
     (async () => {
       let { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
@@ -887,7 +903,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   mapPlaceholder: {
     height: 150,
@@ -910,14 +927,16 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   priceInput: {
     flex: 1,
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   deleteButton: {
     width: 40,
@@ -983,7 +1002,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   photoRequirement: {
     fontSize: 12,

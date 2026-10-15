@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useThemeStore } from '../../src/store/themeStore';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { useAppAlert } from '../../src/components/AppAlert';
+import { isIOS } from '../../src/utils/platform';
 import {
   listUpdateCandidates,
   createUpdateRequest,
@@ -125,7 +125,7 @@ export default function UpdateHostelScreen() {
       <ScreenHeader title="Update Hostel" subtitle="Request an update" />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={isIOS ? 'padding' : undefined}
         style={styles.flex}
       >
         <ScrollView
@@ -475,7 +475,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
     height: '100%',
   },
   emptyCard: {
@@ -550,7 +551,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reasonInput: {
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
     minHeight: 110,
     lineHeight: 20,
   },

@@ -18,7 +18,16 @@
       "package": "com.astrosteck.episilionteamapp"
     },
     "web": {
-      "favicon": "./assets/episilion_logo.png"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/episilion_logo.png",
+      "name": "Episilion Admins",
+      "shortName": "Episilion",
+      "themeColor": "#007AFF",
+      "backgroundColor": "#FFFFFF",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/"
     },
     "plugins": [
       "expo-router",

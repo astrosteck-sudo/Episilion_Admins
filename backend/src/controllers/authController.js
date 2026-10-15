@@ -1,9 +1,16 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const { COOKIE_NAME, cookieOptions } = require('../config/security');
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
+
+/** Cookie lifetime, kept in step with the JWT's own expiry. */
+function cookieMaxAge() {
+  const days = parseInt(process.env.TEAM_JWT_EXPIRES_IN || '7d', 10) || 7;
+  return days * 24 * 60 * 60 * 1000;
+}
 
 exports.login = async (req, res) => {
   try {
@@ -47,6 +54,15 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.TEAM_JWT_EXPIRES_IN || '7d' }
     );
 
+    // Token delivery differs by client: the web build relies on this httpOnly
+    // cookie so the token is never exposed to JavaScript, while the native app
+    // has no cookie jar and uses the token returned in the body. Clients that do
+    // not identify themselves ('unknown') still get the cookie so an older build
+    // keeps working.
+    if (req.clientPlatform !== 'ios' && req.clientPlatform !== 'android') {
+      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: cookieMaxAge() });
+    }
+
     res.json({
       token,
       user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
@@ -55,6 +71,11 @@ exports.login = async (req, res) => {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+exports.logout = (req, res) => {
+  res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: undefined });
+  res.json({ message: 'Signed out' });
 };
 
 exports.me = async (req, res) => {

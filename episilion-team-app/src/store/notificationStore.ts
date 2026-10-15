@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { storage } from '../utils/storage';
+import { isAndroid, isWeb } from '../utils/platform';
 import { STORAGE_KEYS } from '../constants';
 
 /**
@@ -8,6 +8,9 @@ import { STORAGE_KEYS } from '../constants';
  * remote push there), so it is loaded lazily and every call is guarded. When the
  * module is unavailable the toggle still persists the preference and reports why
  * push cannot be enabled.
+ *
+ * Web is excluded outright: the package ships no browser push implementation, so
+ * loading it there would only produce a runtime failure.
  */
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -15,6 +18,7 @@ let notificationsModule: NotificationsModule | null = null;
 let moduleLoadAttempted = false;
 
 function getNotifications(): NotificationsModule | null {
+  if (isWeb) return null;
   if (moduleLoadAttempted) return notificationsModule;
   moduleLoadAttempted = true;
   try {
@@ -49,7 +53,7 @@ function registerForegroundHandler(mod: NotificationsModule) {
 }
 
 async function ensureAndroidChannel(mod: NotificationsModule) {
-  if (Platform.OS !== 'android') return;
+  if (!isAndroid) return;
   try {
     await mod.setNotificationChannelAsync('default', {
       name: 'Review updates',
@@ -88,7 +92,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   loadPreference: async () => {
     try {
-      const saved = await SecureStore.getItemAsync(STORAGE_KEYS.NOTIFICATIONS);
+      const saved = await storage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       const mod = getNotifications();
 
       if (!mod) {
@@ -116,7 +120,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ isUpdating: true });
     try {
       if (!value) {
-        await SecureStore.setItemAsync(STORAGE_KEYS.NOTIFICATIONS, 'false');
+        await storage.setItem(STORAGE_KEYS.NOTIFICATIONS, 'false');
         set({ enabled: false, isUpdating: false });
         return { ok: true };
       }
@@ -127,7 +131,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         return {
           ok: false,
           message:
-            'Push notifications are not available in Expo Go on Android. Install a development build to receive review and approval alerts.',
+            isWeb
+              ? 'Push notifications are not available in the web app yet. Use the mobile app to receive review and approval alerts.'
+              : 'Push notifications are not available in Expo Go on Android. Install a development build to receive review and approval alerts.',
         };
       }
 
@@ -149,7 +155,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       }
 
       await ensureAndroidChannel(mod);
-      await SecureStore.setItemAsync(STORAGE_KEYS.NOTIFICATIONS, 'true');
+      await storage.setItem(STORAGE_KEYS.NOTIFICATIONS, 'true');
       set({ enabled: true, permissionGranted: true, isUpdating: false });
       return { ok: true };
     } catch (error: any) {

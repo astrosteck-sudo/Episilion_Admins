@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import { ColorScheme, ColorPalette, Colors } from '../theme/colors';
 import { STORAGE_KEYS } from '../constants';
 
@@ -28,7 +28,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       colors: Colors[scheme],
       followSystem: false,
     });
-    SecureStore.setItemAsync(STORAGE_KEYS.THEME, scheme);
+    storage.setItem(STORAGE_KEYS.THEME, scheme);
   },
   
   toggleTheme: () => {
@@ -38,7 +38,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
   
   resetToSystemTheme: () => {
-    SecureStore.deleteItemAsync(STORAGE_KEYS.THEME);
+    storage.removeItem(STORAGE_KEYS.THEME);
     const systemScheme = get().systemColorScheme;
     const finalScheme: ColorScheme = systemScheme === 'dark' ? 'dark' : 'light';
     set({ 
@@ -49,7 +49,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
   
   loadTheme: async () => {
-    const savedScheme = await SecureStore.getItemAsync(STORAGE_KEYS.THEME);
+    const savedScheme = await storage.getItem(STORAGE_KEYS.THEME);
     
     if (savedScheme === 'light' || savedScheme === 'dark') {
       set({ 
@@ -71,7 +71,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   
   setSystemColorScheme: async (scheme) => {
     set({ systemColorScheme: scheme });
-    const savedScheme = await SecureStore.getItemAsync(STORAGE_KEYS.THEME);
+    const savedScheme = await storage.getItem(STORAGE_KEYS.THEME);
     // Only update if user hasn't manually set a preference
     if (!savedScheme && scheme) {
       const newScheme: ColorScheme = scheme === 'dark' ? 'dark' : 'light';

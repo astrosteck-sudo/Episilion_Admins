@@ -13,10 +13,10 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/themeStore';
+import { isIOS } from '../utils/platform';
 
 export type AlertVariant = 'error' | 'success' | 'warning' | 'info' | 'question';
 
@@ -143,7 +143,7 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
         onRequestClose={() => state?.cancelable && close()}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={isIOS ? 'padding' : undefined}
           style={styles.flex}
         >
           <TouchableOpacity
@@ -289,7 +289,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 12,
-    fontSize: 14,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
     textAlignVertical: 'top',
     marginBottom: 20,
   },

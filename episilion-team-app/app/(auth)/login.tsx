@@ -9,7 +9,6 @@ import {
   Image,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +17,7 @@ import { useThemeStore } from '../../src/store/themeStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { loginRequest } from '../../src/api/auth';
 import { useAppAlert } from '../../src/components/AppAlert';
+import { isIOS } from '../../src/utils/platform';
 
 export default function LoginScreen() {
   const colors = useThemeStore((state) => state.colors);
@@ -73,13 +73,13 @@ export default function LoginScreen() {
         />
       </TouchableOpacity>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={isIOS ? 'padding' : 'height'}
         style={styles.flex}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          keyboardDismissMode={isIOS ? 'interactive' : 'on-drag'}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
@@ -243,7 +243,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    // 16px is the threshold below which iOS Safari zooms the page on focus.
+    fontSize: 16,
   },
   signInButton: {
     flexDirection: 'row',
