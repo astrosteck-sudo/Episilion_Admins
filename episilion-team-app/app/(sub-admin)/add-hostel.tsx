@@ -16,17 +16,36 @@ import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeStore } from "../../src/store/themeStore";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Input } from "../../src/components/Input";
 import { ScreenHeader } from "../../src/components/ScreenHeader";
 import { LocationMap } from "../../src/components/LocationMap";
 import { createHostel } from "../../src/api/hostels";
 import { useAppAlert } from "../../src/components/AppAlert";
+import { useAuthStore } from "../../src/store/authStore";
 import { isWeb } from "../../src/utils/platform";
+import {
+  deleteDraft,
+  listDrafts,
+  persistDraftPhoto,
+  saveDraft,
+} from "../../src/utils/draftStore";
+
+/** "just now" / "5 min ago" label for the draft status line. */
+const draftAge = (iso: string) => {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+};
 
 export default function AddHostelScreen() {
   const colors = useThemeStore((state) => state.colors);
   const { alert } = useAppAlert();
+  const user = useAuthStore((state) => state.user);
+  const { draftId } = useLocalSearchParams<{ draftId?: string }>();
   const [sectionsCompleted, setSectionsCompleted] = useState(0);
   const [hostelName, setHostelName] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -43,6 +62,152 @@ export default function AddHostelScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [locationError, setLocationError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+  /** Id of the draft being edited; null means this form will create a new one. */
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [otherDraftCount, setOtherDraftCount] = useState(0);
+
+  const resetForm = () => {
+    setHostelName("");
+    setLatitude("");
+    setLongitude("");
+    setRoomTypes([]);
+    setSelectedAmenities([]);
+    setAllowInstallments(false);
+    setManagerName("");
+    setPhoneNumber("");
+    setWhatsappNumber("");
+    setEmail("");
+    setPhoto(null);
+    setSectionsCompleted(0);
+    setDraftSavedAt(null);
+    setIsDraftRestored(false);
+    setActiveDraftId(null);
+  };
+
+  /**
+   * Reopens the draft the sub admin chose from My Drafts. Opening the form
+   * without a `draftId` deliberately starts blank, so a new hostel cannot
+   * silently overwrite a draft that is still in progress.
+   */
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let active = true;
+    (async () => {
+      const drafts = await listDrafts(user.id);
+      if (!active) return;
+
+      if (!draftId) {
+        setOtherDraftCount(drafts.length);
+        return;
+      }
+
+      const draft = drafts.find((item) => item.id === draftId);
+      if (!draft) {
+        setOtherDraftCount(drafts.length);
+        return;
+      }
+
+      setHostelName(draft.hostelName);
+      setLatitude(draft.latitude);
+      setLongitude(draft.longitude);
+      setRoomTypes(draft.roomTypes);
+      setSelectedAmenities(draft.selectedAmenities);
+      setAllowInstallments(draft.allowInstallments);
+      setManagerName(draft.managerName);
+      setPhoneNumber(draft.phoneNumber);
+      setWhatsappNumber(draft.whatsappNumber);
+      setEmail(draft.email);
+      setPhoto(draft.photo);
+      setDraftSavedAt(draft.savedAt);
+      setActiveDraftId(draft.id);
+      setIsDraftRestored(true);
+      setOtherDraftCount(drafts.length - 1);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, draftId]);
+
+  const handleSaveDraft = async () => {
+    if (isSavingDraft || !user?.id) return;
+
+    const hasContent = Boolean(
+      hostelName.trim() ||
+        latitude.trim() ||
+        longitude.trim() ||
+        roomTypes.some((room) => room.type.trim() || room.price.trim()) ||
+        selectedAmenities.length ||
+        managerName.trim() ||
+        phoneNumber.trim() ||
+        whatsappNumber.trim() ||
+        email.trim() ||
+        photo,
+    );
+
+    if (!hasContent) {
+      alert("Nothing to save", "Fill in at least one field before saving a draft.");
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      // The picker's URI is temporary, so the photo is copied before it is stored.
+      const storedPhoto = photo ? await persistDraftPhoto(photo, activeDraftId ?? "") : null;
+      if (storedPhoto && storedPhoto !== photo) setPhoto(storedPhoto);
+
+      const draft = await saveDraft(
+        user.id,
+        {
+          hostelName,
+          latitude,
+          longitude,
+          roomTypes,
+          selectedAmenities,
+          allowInstallments,
+          managerName,
+          phoneNumber,
+          whatsappNumber,
+          email,
+          photo: storedPhoto,
+        },
+        activeDraftId ?? undefined,
+      );
+
+      setDraftSavedAt(draft.savedAt);
+      setActiveDraftId(draft.id);
+      setIsDraftRestored(false);
+    } catch (error: any) {
+      alert(
+        "Could not save draft",
+        error?.message || "The draft could not be saved on this device. Please try again.",
+      );
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    alert(
+      "Discard draft?",
+      "The saved draft and its photo will be deleted from this device.",
+      [
+        { text: "Keep draft", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: async () => {
+            if (activeDraftId) await deleteDraft(activeDraftId);
+            resetForm();
+          },
+        },
+      ],
+    );
+  };
 
   const takePhoto = async () => {
     // The browser has no camera-capture API here; the file picker already offers
@@ -223,18 +388,9 @@ export default function AddHostelScreen() {
         [{ text: "OK", onPress: () => router.replace("/(sub-admin)") }],
       );
 
-      setHostelName("");
-      setLatitude("");
-      setLongitude("");
-      setRoomTypes([]);
-      setSelectedAmenities([]);
-      setAllowInstallments(false);
-      setManagerName("");
-      setPhoneNumber("");
-      setWhatsappNumber("");
-      setEmail("");
-      setPhoto(null);
-      setSectionsCompleted(0);
+      // The submission is now on the server, so the local draft is stale.
+      if (activeDraftId) await deleteDraft(activeDraftId);
+      resetForm();
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
@@ -253,6 +409,58 @@ export default function AddHostelScreen() {
       <ScreenHeader title="Add Hostel" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Draft status */}
+        {draftSavedAt ? (
+          <View
+            style={[
+              styles.draftBanner,
+              { backgroundColor: colors.success + "1F", borderColor: colors.success },
+            ]}
+          >
+            <Ionicons name="cloud-done-outline" size={18} color={colors.success} />
+            <View style={styles.draftBannerText}>
+              <Text style={[styles.draftTitle, { color: colors.success }]}>
+                {isDraftRestored ? "Draft restored" : "Draft saved"}
+              </Text>
+              <Text style={[styles.draftHint, { color: colors.textSecondary }]}>
+                {isDraftRestored
+                  ? `Saved ${draftAge(draftSavedAt)} on this device.`
+                  : `Saved ${draftAge(draftSavedAt)}. Finish it whenever you are ready.`}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleDiscardDraft}
+              accessibilityRole="button"
+              accessibilityLabel="Discard draft"
+              hitSlop={8}
+            >
+              <Text style={[styles.draftDiscard, { color: colors.error }]}>Discard</Text>
+            </TouchableOpacity>
+          </View>
+        ) : otherDraftCount > 0 ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Open my drafts"
+            style={[
+              styles.draftBanner,
+              { backgroundColor: colors.primary + "14", borderColor: colors.primary },
+            ]}
+            onPress={() => router.push("/(sub-admin)/drafts")}
+          >
+            <Ionicons name="bookmark-outline" size={18} color={colors.primary} />
+            <View style={styles.draftBannerText}>
+              <Text style={[styles.draftTitle, { color: colors.primary }]}>
+                {otherDraftCount} saved draft{otherDraftCount === 1 ? "" : "s"}
+              </Text>
+              <Text style={[styles.draftHint, { color: colors.textSecondary }]}>
+                This form starts blank. Open My Drafts to finish one you already saved.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        ) : null}
+
         {/* Progress */}
         <View style={styles.progressContainer}>
           <Text style={[styles.breadcrumb, { color: colors.textSecondary }]}>
@@ -732,6 +940,29 @@ export default function AddHostelScreen() {
         <View style={styles.footer}>
           <TouchableOpacity
             activeOpacity={0.85}
+            onPress={handleSaveDraft}
+            disabled={isSavingDraft || isSubmitting}
+            accessibilityRole="button"
+            accessibilityLabel="Save draft"
+            accessibilityState={{ disabled: isSavingDraft || isSubmitting, busy: isSavingDraft }}
+            style={[
+              styles.draftButton,
+              { borderColor: colors.primary },
+              (isSavingDraft || isSubmitting) && styles.submitButtonDisabled,
+            ]}
+          >
+            {isSavingDraft ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Ionicons name="bookmark-outline" size={18} color={colors.primary} />
+            )}
+            <Text style={[styles.draftButtonText, { color: colors.primary }]}>
+              {isSavingDraft ? "Saving draft..." : "Save as Draft"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={handleSubmit}
             disabled={isSubmitting}
             accessibilityRole="button"
@@ -772,7 +1003,8 @@ export default function AddHostelScreen() {
           </TouchableOpacity>
 
           <Text style={[styles.footerNote, { color: colors.textSecondary }]}>
-            Required fields must be completed before submission.
+            Required fields must be completed before submission. Save a draft to
+            finish it later on this device.
           </Text>
         </View>
       </ScrollView>
@@ -790,6 +1022,45 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     marginBottom: 20,
+  },
+  draftBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+  },
+  draftBannerText: {
+    flex: 1,
+    gap: 2,
+  },
+  draftTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  draftHint: {
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
+  draftDiscard: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  draftButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
+  draftButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   breadcrumb: {
     fontSize: 12,

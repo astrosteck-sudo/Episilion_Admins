@@ -8,4 +8,5 @@ export const STORAGE_KEYS = {
   USER_DATA: 'userData',
   THEME: 'theme',
   NOTIFICATIONS: 'notificationsEnabled',
+  HOSTEL_DRAFTS: 'hostelDrafts',
 } as const;

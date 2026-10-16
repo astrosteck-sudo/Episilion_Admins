@@ -13,6 +13,7 @@ import { useThemeStore } from '../../src/store/themeStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { router, useFocusEffect } from 'expo-router';
 import { getHostelStats, listHostels, type HostelStats, type HostelListItem, type HostelStatus } from '../../src/api/hostels';
+import { listDrafts } from '../../src/utils/draftStore';
 
 const STATUS_COLOR_KEY: Record<HostelStatus, 'success' | 'accent' | 'error'> = {
   approved: 'success',
@@ -43,12 +44,17 @@ export default function SubAdminHomeScreen() {
   const user = useAuthStore((state) => state.user);
   const [stats, setStats] = useState<HostelStats | null>(null);
   const [recent, setRecent] = useState<HostelListItem[]>([]);
+  const [draftCount, setDraftCount] = useState(0);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
+        // Drafts live on the device, so they load even when the API is unreachable.
+        const drafts = user?.id ? await listDrafts(user.id) : [];
+        if (active) setDraftCount(drafts.length);
+
         try {
           const [counters, submissions] = await Promise.all([
             getHostelStats(),
@@ -68,7 +74,7 @@ export default function SubAdminHomeScreen() {
       return () => {
         active = false;
       };
-    }, []),
+    }, [user]),
   );
 
   const statValue = (value: number | undefined) =>
@@ -228,6 +234,28 @@ export default function SubAdminHomeScreen() {
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pending</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Drafts */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Open my drafts"
+          style={[styles.draftsRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => router.push('/(sub-admin)/drafts')}
+        >
+          <View style={[styles.draftsIcon, { backgroundColor: colors.accent + '1A' }]}>
+            <Ionicons name="bookmark-outline" size={18} color={colors.accent} />
+          </View>
+          <View style={styles.draftsText}>
+            <Text style={[styles.draftsTitle, { color: colors.text }]}>My Drafts</Text>
+            <Text style={[styles.draftsHint, { color: colors.textSecondary }]}>
+              {draftCount === 0
+                ? 'Unfinished hostels you saved on this device'
+                : `${draftCount} unfinished hostel${draftCount === 1 ? '' : 's'} saved on this device`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* Recent Activity */}
         <View style={styles.sectionContainer}>
@@ -475,6 +503,37 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     fontWeight: '600',
+  },
+
+  /* Drafts */
+  draftsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  draftsIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftsText: {
+    flex: 1,
+    gap: 2,
+  },
+  draftsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  draftsHint: {
+    fontSize: 11.5,
+    lineHeight: 16,
   },
 
   /* Recent activity */
