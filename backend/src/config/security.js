@@ -22,7 +22,7 @@ const allowedOrigins = parseOrigins(process.env.CORS_ORIGINS);
  */
 function isOriginAllowed(origin) {
   if (!origin) return true;
-  if (allowedOrigins.length === 0) return true; // not configured yet: allow all
+  if (allowedOrigins.length === 0) return process.env.NODE_ENV !== 'production';
   return allowedOrigins.includes(origin);
 }
 
@@ -55,13 +55,15 @@ function requireTrustedOrigin(req, res, next) {
 const COOKIE_NAME = 'episilion_team_token';
 
 /**
- * `SameSite=None` is required when the web app and the API are on different
- * sites, and it only works over HTTPS. Set COOKIE_SAME_SITE=none in that case.
+ * Hosted web builds may call the API from a different site, requiring a secure
+ * cross-site cookie. Production defaults to `SameSite=None`; local development
+ * stays on `Lax`. Configure CORS_ORIGINS in production to allow only the web
+ * app's credentialed cross-origin requests.
  */
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production',
-  sameSite: process.env.COOKIE_SAME_SITE || 'lax',
+  sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
   path: '/',
 };
 
