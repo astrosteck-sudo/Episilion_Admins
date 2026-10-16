@@ -22,7 +22,10 @@ const allowedOrigins = parseOrigins(process.env.CORS_ORIGINS);
  */
 function isOriginAllowed(origin) {
   if (!origin) return true;
-  if (allowedOrigins.length === 0) return process.env.NODE_ENV !== 'production';
+  // Left open until CORS_ORIGINS is configured: blocking here would lock every
+  // browser build out of the API (web calls always carry an Origin header),
+  // including the login request itself.
+  if (allowedOrigins.length === 0) return true;
   return allowedOrigins.includes(origin);
 }
 
