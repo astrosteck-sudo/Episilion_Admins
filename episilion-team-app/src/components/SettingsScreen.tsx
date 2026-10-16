@@ -18,7 +18,7 @@ import { isWeb } from '../utils/platform';
 import { useAppAlert } from './AppAlert';
 import { router } from 'expo-router';
 
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.1';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
